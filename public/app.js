@@ -15,7 +15,10 @@ async function api(path, options) {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'שגיאה לא צפויה' }));
-    throw new Error(err.error || 'שגיאה לא צפויה');
+    const e = new Error(err.error || 'שגיאה לא צפויה');
+    e.status = res.status;
+    e.configured = err.configured;
+    throw e;
   }
   return res.status === 204 ? null : res.json();
 }
@@ -337,12 +340,33 @@ document.querySelector('#balancesTable tbody').addEventListener('click', async (
 // ============================================================
 // אתחול
 // ============================================================
+function showSetupNotice(message) {
+  document.querySelector('main').innerHTML = `
+    <div class="card">
+      <h3>⚙ נדרשת הגדרה של גוגל שיטס</h3>
+      <p>${message}</p>
+      <p class="hint">ראה README.md בקוד המקור לשלבי ההגדרה המלאים (יצירת חשבון שירות בגוגל קלאוד, שיתוף גיליון, והזנת משתני הסביבה).</p>
+    </div>`;
+}
+
 async function init() {
-  state.meta = await api('/meta');
+  try {
+    state.meta = await api('/meta');
+  } catch (err) {
+    if (err.status === 503) {
+      showSetupNotice(err.message);
+      return;
+    }
+    throw err;
+  }
   document.getElementById('taxRateInput').value = state.meta.taxRate;
   document.getElementById('chType').innerHTML = state.meta.channelTypes.map((t) => `<option value="${t}">${t}</option>`).join('');
   document.getElementById('depDate').value = new Date().toISOString().slice(0, 10);
   document.getElementById('balMonthInput').value = state.meta.currentMonth;
+  if (state.meta.sheetUrl) {
+    const link = document.getElementById('sheetLink');
+    if (link) link.href = state.meta.sheetUrl;
+  }
 
   await loadChannels();
   await loadDeposits();

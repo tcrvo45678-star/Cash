@@ -8,7 +8,9 @@
     "start": "node server.js"
   },
   "dependencies": {
-    "exceljs": "^4.4.0",
-    "express": "^4.19.2"
+    "dotenv": "^17.4.2",
+    "express": "^4.19.2",
+    "google-auth-library": "^11.0.2",
+    "google-spreadsheet": "^5.3.0"
   }
 }

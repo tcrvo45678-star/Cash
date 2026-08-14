@@ -60,6 +60,7 @@ body {
   white-space: nowrap;
 }
 .export-btn:hover { opacity: 0.9; }
+.sheet-btn { background: #1a73e8; }
 
 main { max-width: 1100px; margin: 0 auto; padding: 20px; }
 

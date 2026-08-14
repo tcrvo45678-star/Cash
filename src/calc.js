@@ -1,4 +1,4 @@
-const { heToBool } = require('./excelStore');
+const { heToBool } = require('./utils');
 
 function monthEnd(month) {
   // month is 'YYYY-MM' -> last day of that month as ISO date string
