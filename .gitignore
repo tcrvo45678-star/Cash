@@ -1,0 +1,4 @@
+node_modules/
+data/*.xlsx
+!data/.gitkeep
+*.log

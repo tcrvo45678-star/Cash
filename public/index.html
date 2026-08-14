@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>מעקב כספים אישי</title>
+<link rel="stylesheet" href="style.css" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+</head>
+<body>
+<header class="topbar">
+  <h1>💰 מעקב כספים אישי</h1>
+  <nav id="tabs">
+    <button data-tab="dashboard" class="tab-btn active">לוח בקרה</button>
+    <button data-tab="channels" class="tab-btn">אפיקי חיסכון</button>
+    <button data-tab="deposits" class="tab-btn">הפקדות</button>
+    <button data-tab="balances" class="tab-btn">יתרות חודשיות</button>
+  </nav>
+  <a id="exportBtn" href="/api/export" class="export-btn">⬇ הורדת קובץ אקסל</a>
+</header>
+
+<main>
+
+  <!-- ============ טאב: לוח בקרה ============ -->
+  <section id="tab-dashboard" class="tab-panel active">
+    <div class="controls-row">
+      <label>חודש לצפייה:
+        <select id="dashMonthSelect"></select>
+      </label>
+      <label>שיעור מס רווחי הון (%):
+        <input type="number" id="taxRateInput" step="0.1" min="0" max="100" style="width:5em" />
+      </label>
+      <button id="saveTaxRateBtn">שמירה</button>
+    </div>
+
+    <div id="completenessBanner" class="banner"></div>
+
+    <div class="cards-row" id="totalsCards"></div>
+
+    <div class="card">
+      <h3>פירוט לפי אפיק</h3>
+      <div class="table-wrap">
+        <table id="dashboardTable">
+          <thead>
+            <tr>
+              <th>אפיק</th><th>סוג</th><th>סה"כ הפקדות</th><th>יתרה נוכחית (ברוטו)</th>
+              <th>רווח</th><th>מס משוער</th><th>יתרה אחרי מס</th><th>עלות ניהול שנתית משוערת</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>מגמת יתרות חודשית (ברוטו מול נטו לאחר מס)</h3>
+      <canvas id="historyChart" height="90"></canvas>
+    </div>
+  </section>
+
+  <!-- ============ טאב: אפיקים ============ -->
+  <section id="tab-channels" class="tab-panel">
+    <div class="card">
+      <h3>הוספת אפיק חדש</h3>
+      <form id="channelForm" class="inline-form">
+        <input type="text" id="chName" placeholder="שם האפיק" required />
+        <select id="chType"></select>
+        <input type="number" id="chFeeDeposit" placeholder="דמי ניהול מהפקדה %" step="0.01" min="0" />
+        <input type="number" id="chFeeAccum" placeholder="דמי ניהול מצבירה %" step="0.01" min="0" />
+        <label class="checkbox-label"><input type="checkbox" id="chTaxable" checked /> חייב במס רווחי הון</label>
+        <input type="text" id="chNotes" placeholder="הערות" />
+        <button type="submit">הוספת אפיק</button>
+      </form>
+    </div>
+    <div class="card">
+      <h3>אפיקים קיימים</h3>
+      <div class="table-wrap">
+        <table id="channelsTable">
+          <thead>
+            <tr>
+              <th>שם</th><th>סוג</th><th>דמי ניהול מהפקדה %</th><th>דמי ניהול מצבירה %</th>
+              <th>חייב מס</th><th>הערות</th><th>פעולות</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ טאב: הפקדות ============ -->
+  <section id="tab-deposits" class="tab-panel">
+    <div class="card">
+      <h3>רישום הפקדה חדשה</h3>
+      <p class="hint">בכל פעם שאתה מפקיד כסף לאחד האפיקים, רשום כאן את הסכום - זה עדכן אוטומטית את חישוב הרווח והמס.</p>
+      <form id="depositForm" class="inline-form">
+        <select id="depChannel" required></select>
+        <input type="date" id="depDate" required />
+        <input type="number" id="depAmount" placeholder="סכום ההפקדה ₪" step="0.01" min="0" required />
+        <input type="text" id="depNotes" placeholder="הערות" />
+        <button type="submit">רישום הפקדה</button>
+      </form>
+    </div>
+    <div class="card">
+      <h3>היסטוריית הפקדות</h3>
+      <div class="table-wrap">
+        <table id="depositsTable">
+          <thead><tr><th>תאריך</th><th>אפיק</th><th>סכום</th><th>הערות</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ טאב: יתרות חודשיות ============ -->
+  <section id="tab-balances" class="tab-panel">
+    <div class="card">
+      <h3>עדכון יתרות לחודש</h3>
+      <p class="hint">פעם בחודש, הכנס כאן את היתרה הנוכחית (כפי שמופיעה באתר/אפליקציית הגוף המנהל) עבור כל אפיק. אפשר לעדכן רק חלק מהאפיקים ולהשלים את השאר מאוחר יותר.</p>
+      <div class="controls-row">
+        <label>חודש:
+          <input type="month" id="balMonthInput" />
+        </label>
+        <button id="loadBalancesBtn">טעינת נתונים לחודש זה</button>
+      </div>
+      <form id="balancesForm">
+        <div class="table-wrap">
+          <table id="balancesFormTable">
+            <thead><tr><th>אפיק</th><th>יתרה נוכחית ₪</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <button type="submit">שמירת יתרות לחודש</button>
+      </form>
+    </div>
+    <div class="card">
+      <h3>היסטוריית יתרות</h3>
+      <div class="table-wrap">
+        <table id="balancesTable">
+          <thead><tr><th>חודש</th><th>אפיק</th><th>יתרה</th><th>עודכן בתאריך</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
