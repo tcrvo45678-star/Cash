@@ -332,17 +332,48 @@ function expandBtn(id){
 
 const DEFAULT_CHANNELS = [
   { id:"clal", name:"קופת גמל - כלל", classification:"active", liquid:false, taxable:true, feePct:0.62, description:"" },
-  { id:"altshuler", name:"קופת גמל - אלטשולר", classification:"active", liquid:false, taxable:true, feePct:0.70, description:"" },
+  { id:"altshuler", name:"קופת גמל - אלטשולר", classification:"active", liquid:false, taxable:true, feePct:0.3, description:"" },
   { id:EXCELLENCE_ID, name:"השקעה ישירה - אקסלנס", classification:"active", liquid:true, taxable:true, feePct:0, isMulti:true, description:"" },
   { id:"pension", name:"פנסיה", classification:"inactive", liquid:false, taxable:true, feePct:0, description:"" },
   { id:"grant", name:"מענק", classification:"inactive", liquid:false, taxable:false, feePct:0, description:"" },
   { id:"checking", name:"עובר ושב", classification:"active", liquid:true, taxable:false, feePct:0, description:"" },
   { id:"cash", name:"מזומן", classification:"active", liquid:true, taxable:false, feePct:0, description:"" },
+  { id:"deposit", name:"פיקדון", classification:"active", liquid:false, taxable:false, feePct:0, description:"" },
 ];
+
+const DEFAULT_ENTRIES = {
+  clal: [
+    { month:"2026-08", deposited:61430, balance:88000 },
+    { month:"2026-09", deposited:61430, balance:89889 }
+  ],
+  altshuler: [
+    { month:"2026-08", deposited:9276, balance:16800 },
+    { month:"2026-09", deposited:9276, balance:17643 }
+  ],
+  [EXCELLENCE_ID]: [
+    { month:"2026-08", deposited:78000, balance:80000 },
+    { month:"2026-09", deposited:78000, balance:80000 }
+  ],
+  grant: [
+    { month:"2026-08", deposited:0, balance:21900 },
+    { month:"2026-09", deposited:0, balance:21900 }
+  ],
+  checking: [
+    { month:"2026-08", deposited:0, balance:4200 },
+    { month:"2026-09", deposited:0, balance:7400 }
+  ],
+  cash: [
+    { month:"2026-09", deposited:0, balance:400 }
+  ],
+  deposit: [
+    { month:"2026-08", deposited:0, balance:31900 },
+    { month:"2026-09", deposited:0, balance:31900 }
+  ]
+};
 
 let state = {
   channels: JSON.parse(JSON.stringify(DEFAULT_CHANNELS)),
-  entries: {},
+  entries: JSON.parse(JSON.stringify(DEFAULT_ENTRIES)),
   holdings: []
 };
 
