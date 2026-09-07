@@ -317,16 +317,16 @@
 <div id="deltaModalOverlay" class="delta-modal-overlay" onclick="if(event.target===this) closeDeltaModal()">
   <div class="delta-modal-box">
     <h3 id="deltaModalTitle" style="color:var(--bottle); margin-bottom:4px;"></h3>
-    <p class="sub">יתרה נוכחית: <strong id="deltaModalCurrent"></strong></p>
+    <p class="sub"><span id="deltaModalLabel"></span> נוכחית: <strong id="deltaModalCurrent"></strong></p>
     <div class="toggle-pair" style="margin-bottom:10px;">
       <button type="button" id="deltaAddBtn" class="on" onclick="setDeltaSign(1)">➕ הוספה</button>
       <button type="button" id="deltaSubBtn" onclick="setDeltaSign(-1)">➖ הורדה</button>
     </div>
     <label style="font-size:11px; color:#666; display:block; margin-bottom:4px;">סכום לשינוי</label>
     <input type="number" id="deltaAmountInput" min="0" placeholder="0" oninput="updateDeltaPreview()" style="width:100%; padding:9px; border:1px solid #ddd; border-radius:6px;">
-    <p class="sub" style="margin-top:10px;">יתרה חדשה: <strong id="deltaModalResult"></strong></p>
+    <p class="sub" style="margin-top:10px;"><span id="deltaModalLabelNew"></span> חדשה: <strong id="deltaModalResult"></strong></p>
     <div style="display:flex; gap:8px; margin-top:6px;">
-      <button type="button" class="btn btn-primary" style="flex:1;" onclick="confirmDeltaModal()">עדכן יתרה</button>
+      <button type="button" class="btn btn-primary" style="flex:1;" onclick="confirmDeltaModal()"><span id="deltaModalBtnLabel">עדכן</span></button>
       <button type="button" class="btn btn-outline" style="flex:1;" onclick="closeDeltaModal()">ביטול</button>
     </div>
   </div>
@@ -721,7 +721,10 @@ function renderEntryForms(){
           ${ch.taxable ? `
             <div>
               <label style="font-size: 11px; color: #666;">סך הפקדות</label>
-              <input type="number" value="${draft.deposited||''}" onchange="updateDraft('${ch.id}','deposited',this.value)" style="width:100%; padding:7px; border:1px solid #ddd; border-radius:6px;">
+              <div style="display:flex; gap:6px;">
+                <input type="number" value="${draft.deposited||''}" onchange="updateDraft('${ch.id}','deposited',this.value)" style="width:100%; padding:7px; border:1px solid #ddd; border-radius:6px;">
+                <button type="button" class="btn btn-outline btn-small" title="הוסף/הורד סכום מההפקדות" onclick="openDeltaModal('${ch.id}','deposited')" style="flex-shrink:0; padding:0 12px;">➕</button>
+              </div>
             </div>` : ""}
           <div>
             <label style="font-size: 11px; color: #666;">יתרה</label>
@@ -741,16 +744,23 @@ function updateDraft(channelId, field, value){
 }
 
 // ============ BALANCE DELTA POPUP (add/subtract instead of typing the full balance) ============
-let deltaModalState = { channelId: null, sign: 1 };
-function currentBalanceFor(channelId){
+let deltaModalState = { channelId: null, sign: 1, field: "balance" };
+function currentValueFor(channelId, field){
   const draft = drafts[channelId] || entryFor(channelId, currentMonth);
-  return draft && draft.balance!=null ? draft.balance : 0;
+  return draft && draft[field]!=null ? draft[field] : 0;
 }
-function openDeltaModal(channelId){
+function currentBalanceFor(channelId){
+  return currentValueFor(channelId, "balance");
+}
+function openDeltaModal(channelId, field="balance"){
   const ch = channelById(channelId);
   if (!ch) return;
-  deltaModalState = { channelId, sign: 1 };
+  deltaModalState = { channelId, sign: 1, field };
+  const fieldLabel = field==="balance" ? "יתרה" : "הפקדות";
   document.getElementById("deltaModalTitle").textContent = ch.name;
+  document.getElementById("deltaModalLabel").textContent = fieldLabel;
+  document.getElementById("deltaModalLabelNew").textContent = fieldLabel;
+  document.getElementById("deltaModalBtnLabel").textContent = field==="balance" ? "עדכן יתרה" : "עדכן הפקדות";
   document.getElementById("deltaAmountInput").value = "";
   setDeltaSign(1);
   document.getElementById("deltaModalOverlay").classList.add("open");
@@ -768,7 +778,7 @@ function setDeltaSign(sign){
 }
 function updateDeltaPreview(){
   if (!deltaModalState.channelId) return;
-  const current = currentBalanceFor(deltaModalState.channelId);
+  const current = currentValueFor(deltaModalState.channelId, deltaModalState.field);
   const amount = parseFloat(document.getElementById("deltaAmountInput").value) || 0;
   const result = current + deltaModalState.sign*amount;
   document.getElementById("deltaModalCurrent").textContent = fmt(current);
@@ -777,10 +787,10 @@ function updateDeltaPreview(){
 function confirmDeltaModal(){
   const channelId = deltaModalState.channelId;
   if (!channelId) return;
-  const current = currentBalanceFor(channelId);
+  const current = currentValueFor(channelId, deltaModalState.field);
   const amount = parseFloat(document.getElementById("deltaAmountInput").value) || 0;
-  const newBalance = current + deltaModalState.sign*amount;
-  updateDraft(channelId, "balance", newBalance);
+  const newValue = current + deltaModalState.sign*amount;
+  updateDraft(channelId, deltaModalState.field, newValue);
   closeDeltaModal();
   renderEntryForms();
 }
