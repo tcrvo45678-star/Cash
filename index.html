@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>פנקס החיסכון - גרסה 7</title>
+<meta name="theme-color" content="#0E4B44">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bottle: #0E4B44;
+    --gold: #C7A25B;
+    --paper: #FBFBF9;
+    --rust: #8C4A38;
+    --good: #2F7D6E;
+    --blue: #5C7A94;
+    --ink: #1F332F;
+    --muted: #8B9490;
+    --grid: #D8E3DF;
+    --icon-bg: #E1F0EC;
+    --divider: #E7E3D8;
+    /* consolidated type scale - use these everywhere instead of one-off sizes */
+    --fs-1: 11px;   /* meta / tiny labels */
+    --fs-2: 13px;   /* body text, inputs, buttons */
+    --fs-3: 15px;   /* emphasized values, subheadings */
+    --fs-4: 18px;   /* section headings */
+    --fs-5: 24px;   /* page title, hero numbers */
+  }
+  html, body { overflow-x: hidden; max-width: 100%; }
+  body {
+    font-family: 'Noto Sans Hebrew', system-ui, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    direction: rtl;
+    font-size: var(--fs-2);
+  }
+
+  .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+
+  .header {
+    text-align: center;
+    margin-bottom: 24px;
+    padding: 22px;
+    background: var(--bottle);
+    border-radius: 12px;
+    color: white;
+  }
+  .header h1 { font-size: var(--fs-5); margin-bottom: 6px; font-weight: 700; }
+  .header p { font-size: var(--fs-2); color: #8FC4BD; }
+
+  .tabs {
+    display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;
+    background: white; padding: 8px; border-radius: 10px; border: 0.5px solid var(--divider);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .tab-btn {
+    flex: 1; min-width: 110px; padding: 12px 14px; border: 1px solid var(--divider); background: white;
+    color: var(--muted); cursor: pointer; border-radius: 8px; font-weight: 500; font-size: var(--fs-2); transition: all 0.2s;
+  }
+  .tab-btn.active { background: var(--bottle); color: white; border-color: var(--bottle); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .card {
+    background: white; padding: 22px; border-radius: 12px; margin-bottom: 18px;
+    border: 0.5px solid var(--divider); border-right: 3px solid var(--gold);
+  }
+  .card h2 { font-size: var(--fs-4); font-weight: 500; margin-bottom: 14px; color: var(--bottle); }
+  .card h3 { font-size: var(--fs-2); font-weight: 500; margin: 14px 0 10px; color: var(--bottle); }
+  .sub { font-size: var(--fs-1); color: var(--muted); margin-top: -8px; margin-bottom: 12px; }
+
+  /* Summary card */
+  .summary-card {
+    background: var(--bottle);
+    color: white; border-radius: 14px; padding: 26px; margin-bottom: 20px;
+  }
+  .summary-title { font-size: var(--fs-3); font-weight: 500; margin-bottom: 18px; color: #8FC4BD; }
+  .summary-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 20px;
+  }
+  .summary-stat { background: rgba(255,255,255,0.08); border-radius: 10px; padding: 14px; }
+  .summary-stat-label { font-size: var(--fs-1); color: #8FC4BD; margin-bottom: 6px; }
+  .summary-stat-value { font-size: var(--fs-5); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .summary-stat-value.gold { color: var(--gold); }
+  .summary-stat-value.warn { color: #E8B4A0; }
+
+  .split-bars { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .split-bar-box { background: rgba(255,255,255,0.08); border-radius: 10px; padding: 14px; }
+  .split-bar-title { font-size: var(--fs-1); margin-bottom: 10px; opacity: 0.9; }
+  .split-bar-track { height: 22px; border-radius: 11px; overflow: hidden; display: flex; background: rgba(0,0,0,0.2); }
+  .split-bar-seg { display: flex; align-items: center; justify-content: center; font-size: var(--fs-1); font-weight: 700; transition: width 0.4s; }
+  .split-bar-legend { display: flex; justify-content: space-between; font-size: var(--fs-1); margin-top: 8px; opacity: 0.9; }
+
+  /* Classification badges */
+  .classification-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: var(--fs-1); font-weight: 600; margin: 0 4px 4px 0; }
+  .classification-active { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+  .classification-maintenance { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+  .classification-inactive { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+  .channel-card { background: #F6F8F7; padding: 16px; border-radius: 10px; margin-bottom: 12px; border: 0.5px solid var(--divider); }
+  .channel-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+  .channel-name { font-weight: 500; font-size: var(--fs-2); color: var(--bottle); }
+  .channel-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .tag { font-size: var(--fs-1); padding: 2px 8px; border-radius: 10px; background: #eee; color: #555; }
+  .tag.tax { background: #fde7e0; color: var(--rust); }
+  .tag.notax { background: #dff1e4; color: var(--good); }
+  .tag.liquid { background: #e2eef5; color: var(--blue); }
+  .tag.illiquid { background: #f1e9d9; color: var(--gold); }
+
+  .classification-buttons { display: flex; gap: 6px; flex-wrap: wrap; }
+  .classification-btn { padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; font-size: var(--fs-1); transition: all 0.2s; }
+  .classification-btn.selected { background: var(--bottle); color: white; border-color: var(--bottle); }
+
+  .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-top: 10px; }
+  .config-field label { display: block; font-size: var(--fs-1); font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 4px; }
+  .config-field input, .config-field select, .config-field textarea {
+    width: 100%; padding: 7px 9px; border: 1px solid #ddd; border-radius: 6px; font-size: var(--fs-2); font-family: 'Noto Sans Hebrew', sans-serif;
+  }
+  .toggle-pair { display: flex; gap: 6px; }
+  .toggle-pair button { flex: 1; padding: 6px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; font-size: var(--fs-1); }
+  .toggle-pair button.on { background: var(--bottle); color: white; border-color: var(--bottle); }
+
+  .filters { background: #f9f9f9; padding: 16px; border-radius: 10px; margin-bottom: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: end; }
+  .filter-group label { display: block; font-size: var(--fs-2); font-weight: 600; color: var(--bottle); margin-bottom: 6px; }
+  .filter-group input, .filter-group select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: var(--fs-2); }
+
+  .analysis-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; max-width: 100%; }
+  .channel-analysis { background: white; border: 0.5px solid var(--divider); border-right: 3px solid var(--gold); border-radius: 12px; padding: 18px; min-width: 0; }
+  .channel-analysis-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--divider); padding-bottom: 10px; }
+  .channel-analysis-title { font-weight: 500; font-size: var(--fs-3); color: var(--bottle); }
+  .channel-analysis-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px,1fr)); gap: 8px; font-size: var(--fs-2); margin-bottom: 14px; }
+  .stat-item { background: #F1F5F3; padding: 9px; border-radius: 7px; }
+  .stat-label { font-size: var(--fs-1); color: var(--muted); font-weight: 500; }
+  .stat-value { font-size: var(--fs-3); font-weight: 700; color: var(--bottle); margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .stat-value.positive { color: var(--good); }
+  .stat-value.negative { color: var(--rust); }
+
+  table { width: 100%; border-collapse: collapse; font-size: var(--fs-1); margin-bottom: 14px; }
+  table th { background: #F1F5F3; padding: 8px 6px; text-align: right; font-weight: 500; color: var(--bottle); border-bottom: 1px solid var(--divider); white-space: nowrap; }
+  table td { padding: 7px 6px; border-bottom: 1px solid #eee; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table tr:hover { background: #f9f9f9; }
+  .table-scroll { overflow-x: auto; max-width: 100%; }
+
+  .chart-box { background: #F6F8F7; padding: 14px; border-radius: 10px; margin-top: 10px; border: 0.5px solid var(--divider); max-width: 100%; overflow: hidden; }
+  .chart-box.expanded { padding: 18px 14px; }
+  .chart-box-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .chart-box-title { font-size: var(--fs-2); font-weight: 500; color: var(--bottle); margin-bottom: 0; }
+  .chart-expand-btn {
+    flex-shrink: 0; width: 28px; height: 28px; border-radius: 6px; border: 0.5px solid var(--divider);
+    background: white; color: var(--bottle); cursor: pointer; font-size: var(--fs-2); line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .chart-expand-btn:hover { background: #F1F5F3; }
+  .chart-box-sub { font-size: var(--fs-1); color: var(--muted); margin-top: 4px; margin-bottom: 8px; }
+
+  .month-range-controls { display: flex; gap: 8px; align-items: end; margin-bottom: 10px; flex-wrap: wrap; }
+  .month-range-controls .field { display: flex; flex-direction: column; gap: 4px; }
+  .month-range-controls label { font-size: var(--fs-1); color: var(--muted); font-weight: 600; }
+  .month-range-controls input { padding: 6px 8px; border: 1px solid #ddd; border-radius: 6px; font-size: var(--fs-2); }
+  .month-range-controls button { padding: 7px 14px; background: var(--bottle); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: var(--fs-2); font-weight: 600; }
+
+  .empty-state { text-align: center; padding: 36px 20px; color: #999; }
+  .empty-icon { font-size: 44px; margin-bottom: 10px; }
+
+  .btn { padding: 10px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: var(--fs-2); transition: all 0.2s; font-family: 'Noto Sans Hebrew', sans-serif; }
+  .btn-primary { background: var(--bottle); color: white; }
+  .btn-primary:hover { background: #0A3730; }
+  .btn-outline { background: white; border: 1.5px solid var(--bottle); color: var(--bottle); }
+  .btn-outline:hover { background: #F0EDE2; }
+  .btn-gold { background: var(--gold); color: var(--ink); }
+  .btn-small { padding: 6px 12px; font-size: var(--fs-1); }
+  .btn-danger { background: white; border: 1.5px solid var(--rust); color: var(--rust); }
+
+  .month-picker-container { display: flex; gap: 8px; margin-bottom: 4px; align-items: center; flex-wrap: wrap; }
+  .month-picker-container input { padding: 9px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: var(--fs-2); }
+
+  .text-positive { color: var(--good); }
+  .text-negative { color: var(--rust); }
+  .text-neutral { color: #999; }
+
+  .delta-graphs-container { display: grid; grid-template-columns: 1fr; gap: 18px; }
+  .graph-card { background: white; padding: 18px; border-radius: 12px; border: 0.5px solid var(--divider); max-width: 100%; overflow: hidden; }
+  .graph-card.expanded { padding: 22px 16px; }
+  .graph-title { font-size: var(--fs-3); font-weight: 500; color: var(--bottle); margin-bottom: 10px; }
+  .graph-controls { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .filter-checkbox { display: flex; align-items: center; gap: 5px; font-size: var(--fs-2); background: #f5f5f5; padding: 5px 10px; border-radius: 14px; }
+  .filter-checkbox input { cursor: pointer; }
+
+  .holdings-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+  .holding-row { background: #F6F8F7; border: 0.5px solid var(--divider); border-radius: 8px; padding: 12px; }
+  .holding-row-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .holding-name { font-weight: 500; font-size: var(--fs-2); color: var(--bottle); }
+  .remove-btn { background: none; border: none; color: var(--rust); cursor: pointer; font-size: 16px; padding: 0 4px; }
+
+  .settings-toggle { text-align: center; font-size: var(--fs-1); color: var(--muted); cursor: pointer; padding: 10px; text-decoration: underline; }
+  .sync-status { font-size: var(--fs-1); color: var(--muted); text-align: center; margin-top: 8px; }
+
+  .legend-row { display: flex; justify-content: space-between; align-items: center; font-size: var(--fs-1); padding: 4px 0; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; margin-left: 6px; }
+  .legend-name { display: flex; align-items: center; }
+  .legend-value { font-weight: 500; font-variant-numeric: tabular-nums; }
+
+  @media (max-width: 640px) {
+    .analysis-container { grid-template-columns: 1fr; }
+    .channel-analysis-stats { grid-template-columns: repeat(2,1fr); }
+    .header h1 { font-size: 22px; }
+    .filters { grid-template-columns: 1fr; }
+    .summary-grid { grid-template-columns: repeat(2,1fr); }
+    .split-bars { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>💰 פנקס החיסכון שלי</h1>
+    <p>ניהול השקעות בפרוטרוט - גרסה 7</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="monthly">📈 מעקב חודשי</button>
+    <button class="tab-btn" data-tab="analysis">📊 ניתוח אפיקים</button>
+    <button class="tab-btn" data-tab="delta">📉 הפרשים חודשיים</button>
+  </div>
+
+  <!-- ============ MONTHLY TAB ============ -->
+  <div class="tab-content active" id="monthlyTab">
+
+    <!-- Summary Card -->
+    <div class="summary-card" id="summaryCard"></div>
+
+    <div class="card">
+      <h2>📅 בחירת נקודת מעקב</h2>
+      <div class="month-picker-container">
+        <input type="month" id="monthPicker">
+        <button class="btn btn-primary btn-small" onclick="loadMonth()">טען נקודה</button>
+      </div>
+      <p class="sub">אפשר לבחור כל חודש - כולל חודש שכבר יש בו רישום, כדי לערוך אותו.</p>
+    </div>
+
+    <div class="card">
+      <h2>📝 הזנת נתונים - <span id="currentMonthLabel"></span></h2>
+      <div id="entryForms"></div>
+      <button class="btn btn-primary" onclick="saveData()" style="width: 100%; margin-top: 16px;">💾 שמור נקודת מעקב</button>
+      <div class="sync-status" id="syncStatus"></div>
+    </div>
+
+    <!-- Excellence holdings management -->
+    <div class="card" id="excellenceCard">
+      <h2>📦 אקסלנס - פירוט אחזקות (אופציונלי)</h2>
+      <p class="sub">היתרה וההפקדות של אקסלנס מוזנות למעלה כמו כל אפיק אחר. כאן אפשר, בנוסף, לפרט את ההחזקות הבודדות (מניה/קרן) לצורך מעקב פנימי - זה לא משפיע על החישוב הכללי.</p>
+      <div id="holdingsList" class="holdings-list"></div>
+      <button class="btn btn-outline btn-small" onclick="addHolding()" style="margin-top: 10px;">➕ הוסף אחזקה</button>
+    </div>
+
+    <!-- Channel configuration - moved to bottom -->
+    <div class="card">
+      <h2>⚙ הגדרת אפיקים</h2>
+      <p class="sub">סיווג, מיסוי, נזילות ודמי ניהול לכל אפיק. שינויים כאן משפיעים מייד על החישובים והגרפים.</p>
+      <div id="classificationCards"></div>
+      <button class="btn btn-outline" onclick="showAddChannelForm()" style="margin-top: 12px;" id="showAddChannelBtn">➕ הוסף אפיק חדש</button>
+      <div id="addChannelForm" style="display:none; margin-top: 14px; background:#f9f9f9; padding:14px; border-radius:10px;"></div>
+    </div>
+
+    <div class="settings-toggle" id="settingsToggle">⚙ הגדרות סנכרון ל-Google Sheets</div>
+    <div class="card" id="settingsCard" style="display:none;">
+      <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px;">כתובת Web App של הסקריפט (Apps Script)</label>
+      <input type="url" id="sheetsUrl" placeholder="https://script.google.com/macros/s/.../exec" style="width:100%; padding:9px; border:1px solid #ddd; border-radius:6px;">
+      <button class="btn btn-gold btn-small" onclick="saveSheetsUrl()" style="margin-top:8px;">שמור כתובת</button>
+      <p class="sub" style="margin-top:8px;">בכל שמירת נקודת מעקב, הנתונים יישלחו אוטומטית לגיליון המחובר.</p>
+      <button class="btn btn-outline btn-small" onclick="exportCSV()" style="margin-top: 4px;">⬇ ייצוא ידני ל-CSV</button>
+    </div>
+  </div>
+
+  <!-- ============ ANALYSIS TAB ============ -->
+  <div class="tab-content" id="analysisTab">
+    <div class="card">
+      <h2>📊 ניתוח אפיקים לפי חודש</h2>
+      <p class="sub">לכל אפיק: טבלת התפתחות מלאה, גרף היסטוריה קבוע, וגרף עם טווח חודשים לבחירתך.</p>
+    </div>
+    <div id="analysisContainer" class="analysis-container"></div>
+  </div>
+
+  <!-- ============ DELTA TAB ============ -->
+  <div class="tab-content" id="deltaTab">
+    <div class="card">
+      <h2>📉 הפרשים חודשיים</h2>
+      <p class="sub">הצגת השינויים בערכי אפיקים מחודש לחודש - כללי ולפי אפיק.</p>
+      <div class="graph-controls">
+        <span style="font-weight: 600; font-size: 13px;">סנן אפיקים:</span>
+        <div id="channelFilters" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+      </div>
+    </div>
+    <div id="deltaGraphsContainer" class="delta-graphs-container"></div>
+  </div>
+
+  <div style="text-align:center; padding:18px 10px; font-size:var(--fs-1); color:var(--muted);">
+    גרסת קובץ: v11 &middot; <span id="buildStamp"></span>
+  </div>
+</div>
+
+<script>
+// ============ STATE ============
+const TAX_RATE = 0.25;
+const STORAGE_KEY = "finance-tracker-v7";
+const SHEETS_URL_KEY = "finance-tracker-sheets-url";
+const EXCELLENCE_ID = "excellence";
+const PALETTE = ["#0E4B44","#C7A25B","#8C4A38","#5C7A94","#4F8C82","#9B6B5C","#7A8FA6","#A0895A"];
+
+// ============ CHART EXPAND/COLLAPSE (view-only, no effect on state/storage) ============
+// In-flow expansion instead of a fixed-position overlay: safer across limited WebViews.
+const chartRegistry = {};
+const expandedCharts = {};
+function registerChart(id, buildFn){ chartRegistry[id] = buildFn; }
+function toggleChartExpand(id){
+  const buildFn = chartRegistry[id];
+  if (!buildFn) return;
+  expandedCharts[id] = !expandedCharts[id];
+  const target = document.getElementById('render_'+id);
+  const box = document.getElementById('box_'+id);
+  const btn = document.getElementById('btn_'+id);
+  if (target) target.innerHTML = buildFn(expandedCharts[id]);
+  if (box) box.classList.toggle('expanded', expandedCharts[id]);
+  if (btn) btn.textContent = expandedCharts[id] ? '⤡' : '⛶';
+  if (expandedCharts[id] && box) box.scrollIntoView({behavior:'smooth', block:'start'});
+}
+function expandBtn(id){
+  return `<button class="chart-expand-btn" id="btn_${id}" onclick="toggleChartExpand('${id}')" title="הגדל/כווץ תצוגה">⛶</button>`;
+}
+
+const DEFAULT_CHANNELS = [
+  { id:"clal", name:"קופת גמל - כלל", classification:"active", liquid:false, taxable:true, feePct:0.62, description:"" },
+  { id:"altshuler", name:"קופת גמל - אלטשולר", classification:"active", liquid:false, taxable:true, feePct:0.70, description:"" },
+  { id:EXCELLENCE_ID, name:"השקעה ישירה - אקסלנס", classification:"active", liquid:true, taxable:true, feePct:0, isMulti:true, description:"" },
+  { id:"pension", name:"פנסיה", classification:"inactive", liquid:false, taxable:true, feePct:0, description:"" },
+  { id:"grant", name:"מענק", classification:"inactive", liquid:false, taxable:false, feePct:0, description:"" },
+  { id:"checking", name:"עובר ושב", classification:"active", liquid:true, taxable:false, feePct:0, description:"" },
+  { id:"cash", name:"מזומן", classification:"active", liquid:true, taxable:false, feePct:0, description:"" },
+];
+
+let state = {
+  channels: JSON.parse(JSON.stringify(DEFAULT_CHANNELS)),
+  entries: {},
+  holdings: []
+};
+
+let currentMonth = new Date().toISOString().slice(0,7);
+let drafts = {};
+let holdDrafts = {};
+let channelFilters = {};
+let analysisRange = {}; // per-channel {from, to}
+let sheetsUrl = "";
+
+// ============ INIT / PERSISTENCE ============
+function loadState(){
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved){
+    try {
+      const data = JSON.parse(saved);
+      state.entries = data.entries || {};
+      state.holdings = data.holdings || [];
+      if (data.channels && data.channels.length){
+        const merged = [];
+        const seen = new Set();
+        data.channels.forEach(sc => { merged.push(sc); seen.add(sc.id); });
+        DEFAULT_CHANNELS.forEach(dc => { if (!seen.has(dc.id)) merged.push(dc); });
+        state.channels = merged;
+      }
+    } catch(e){ console.error("load error", e); }
+  }
+  sheetsUrl = localStorage.getItem(SHEETS_URL_KEY) || "";
+}
+function saveState(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ channels: state.channels, entries: state.entries, holdings: state.holdings }));
+}
+
+function fmt(n){ return "₪" + Math.round(n||0).toLocaleString("he-IL"); }
+function pct(n){ return (n>=0?"+":"") + (n||0).toFixed(1) + "%"; }
+function monthLabel(m){
+  if(!m) return "";
+  const [y,mo] = m.split("-");
+  const names=["ינו","פבר","מרץ","אפר","מאי","יונ","יול","אוג","ספט","אוק","נוב","דצמ"];
+  return names[parseInt(mo,10)-1] + " " + y;
+}
+
+// ============ CHANNEL HELPERS ============
+function channelById(id){ return state.channels.find(c=>c.id===id); }
+
+function entryFor(channelId, month){
+  return (state.entries[channelId]||[]).find(e=>e.month===month);
+}
+function lastKnownDeposited(channelId, month){
+  const list = (state.entries[channelId]||[]).filter(e=>e.month<=month).sort((a,b)=>a.month.localeCompare(b.month));
+  return list.length ? list[list.length-1].deposited : 0;
+}
+function statsFor(channelId){
+  const c = channelById(channelId);
+  const list = (state.entries[channelId]||[]).slice().sort((a,b)=>a.month.localeCompare(b.month));
+  return list.map(e=>{
+    const gain = c.taxable ? Math.max(0, e.balance-e.deposited) : 0;
+    const tax = c.taxable ? gain*TAX_RATE : 0;
+    const net = e.balance - tax;
+    const feeMonthly = (e.balance * (c.feePct||0)/100)/12;
+    return { ...e, gain, tax, net, feeMonthly };
+  });
+}
+
+function usdToIls(){
+  return parseFloat(localStorage.getItem("usd-ils-rate")||"3.7");
+}
+function currencyForHolding(h){ return h.currency || "ILS"; }
+function holdingStats(holdingId){
+  const h = state.holdings.find(x=>x.id===holdingId);
+  if (!h) return [];
+  const list = (state.entries[holdingId]||[]).slice().sort((a,b)=>a.month.localeCompare(b.month));
+  const isUSD = currencyForHolding(h)==="USD";
+  const rate = usdToIls();
+  return list.map(e=>{
+    const rawBalance = e.rawBalance!=null ? e.rawBalance : 0;
+    const balanceILS = isUSD ? rawBalance*rate : rawBalance;
+    const deposited = e.pctChange!=null && e.pctChange!==-100 ? balanceILS/(1+e.pctChange/100) : balanceILS;
+    const gain = Math.max(0, balanceILS-deposited);
+    const tax = gain*TAX_RATE;
+    const net = balanceILS-tax;
+    return { month:e.month, rawBalance, balanceILS, deposited, gain, tax, net, pctChange:e.pctChange };
+  });
+}
+function latestHolding(holdingId){
+  const rows = holdingStats(holdingId);
+  return rows.length ? rows[rows.length-1] : null;
+}
+function holdingFxDiff(h){
+  if (currencyForHolding(h)!=="USD" || !h.purchaseRate) return null;
+  const last = latestHolding(h.id);
+  if (!last) return null;
+  return last.balanceILS - (last.rawBalance * h.purchaseRate);
+}
+
+// Excellence holdings aggregate - informational breakdown only, does not drive the channel's own balance/deposits anymore
+function excellenceHoldingsAggregate(){
+  const monthsSet = new Set();
+  state.holdings.forEach(h => (state.entries[h.id]||[]).forEach(e=>monthsSet.add(e.month)));
+  const months = Array.from(monthsSet).sort();
+  return months.map(m=>{
+    let balance=0, deposited=0, feeMonthly=0;
+    state.holdings.forEach(h=>{
+      const rows = holdingStats(h.id).filter(r=>r.month<=m);
+      if (rows.length){ const last=rows[rows.length-1]; balance+=last.balanceILS; deposited+=last.deposited; feeMonthly += (last.balanceILS*(h.feePct||0)/100)/12; }
+    });
+    const gain = Math.max(0, balance-deposited);
+    const tax = gain*TAX_RATE;
+    const net = balance-tax;
+    return { month:m, balance, deposited, gain, tax, net, feeMonthly };
+  });
+}
+
+// ============ MONTHLY TOTALS / SUMMARY ============
+function monthlyTotals(){
+  const monthsSet = new Set();
+  state.channels.forEach(c=>statsFor(c.id).forEach(e=>monthsSet.add(e.month)));
+  const months = Array.from(monthsSet).sort();
+  return months.map(m=>{
+    let gross=0, net=0, liquid=0, illiquid=0, taxable=0, taxfree=0, taxPaid=0;
+    state.channels.forEach(c=>{
+      const rows = statsFor(c.id).filter(r=>r.month<=m);
+      if (!rows.length) return;
+      const last = rows[rows.length-1];
+      gross += last.balance; net += last.net; taxPaid += last.tax;
+      if (c.liquid) liquid+=last.net; else illiquid+=last.net;
+      if (c.taxable) taxable+=last.net; else taxfree+=last.net;
+    });
+    return { month:m, gross, net, liquid, illiquid, taxable, taxfree, taxPaid };
+  });
+}
+
+function renderSummaryCard(){
+  const totals = monthlyTotals();
+  const card = document.getElementById("summaryCard");
+  if (!totals.length){
+    card.innerHTML = `<div class="summary-title">💰 סיכום כללי</div><p style="opacity:0.85; font-size:13px;">אין עדיין נתונים. הזן נקודת מעקב ראשונה למטה כדי לראות סיכום.</p>`;
+    return;
+  }
+  const t = totals[totals.length-1];
+  const liquidPct = t.net ? Math.round(t.liquid/t.net*100) : 0;
+  const illiquidPct = 100-liquidPct;
+  const taxablePct = t.net ? Math.round(t.taxable/t.net*100) : 0;
+  const taxfreePct = 100-taxablePct;
+
+  card.innerHTML = `
+    <div class="summary-title">💰 סיכום כללי - נכון ל${monthLabel(t.month)}</div>
+    <div class="summary-grid">
+      <div class="summary-stat"><div class="summary-stat-label">סה״כ נטו (אחרי מס)</div><div class="summary-stat-value gold">${fmt(t.net)}</div></div>
+      <div class="summary-stat"><div class="summary-stat-label">סה״כ ברוטו (לפני מס)</div><div class="summary-stat-value">${fmt(t.gross)}</div></div>
+      <div class="summary-stat"><div class="summary-stat-label">נזיל</div><div class="summary-stat-value">${fmt(t.liquid)}</div></div>
+      <div class="summary-stat"><div class="summary-stat-label">לא נזיל</div><div class="summary-stat-value">${fmt(t.illiquid)}</div></div>
+      <div class="summary-stat"><div class="summary-stat-label">מס משוער שנוכה</div><div class="summary-stat-value warn">${fmt(t.taxPaid)}</div></div>
+    </div>
+    <div class="split-bars">
+      <div class="split-bar-box">
+        <div class="split-bar-title">נזיל מול לא נזיל</div>
+        <div class="split-bar-track">
+          <div class="split-bar-seg" style="width:${liquidPct}%; background:var(--good);">${liquidPct>12?liquidPct+"%":""}</div>
+          <div class="split-bar-seg" style="width:${illiquidPct}%; background:var(--rust);">${illiquidPct>12?illiquidPct+"%":""}</div>
+        </div>
+        <div class="split-bar-legend"><span>🟢 נזיל ${fmt(t.liquid)}</span><span>🟤 לא נזיל ${fmt(t.illiquid)}</span></div>
+      </div>
+      <div class="split-bar-box">
+        <div class="split-bar-title">חייב במס מול פטור</div>
+        <div class="split-bar-track">
+          <div class="split-bar-seg" style="width:${taxablePct}%; background:var(--gold);">${taxablePct>12?taxablePct+"%":""}</div>
+          <div class="split-bar-seg" style="width:${taxfreePct}%; background:var(--blue);">${taxfreePct>12?taxfreePct+"%":""}</div>
+        </div>
+        <div class="split-bar-legend"><span>🟡 חייב ${fmt(t.taxable)}</span><span>🔵 פטור ${fmt(t.taxfree)}</span></div>
+      </div>
+    </div>
+  `;
+}
+
+// ============ TABS ============
+document.querySelectorAll(".tab-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    const tab = btn.dataset.tab;
+    document.querySelectorAll(".tab-content").forEach(t=>t.classList.remove("active"));
+    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+    document.getElementById(tab+"Tab").classList.add("active");
+    btn.classList.add("active");
+    if (tab==="analysis") renderAnalysisTab();
+    if (tab==="delta") renderDeltaTab();
+  });
+});
+
+// ============ MONTHLY TAB RENDER ============
+function render(){
+  document.getElementById("currentMonthLabel").textContent = monthLabel(currentMonth);
+  renderSummaryCard();
+  renderClassification();
+  renderEntryForms();
+  renderHoldingsList();
+}
+
+function renderClassification(){
+  const container = document.getElementById("classificationCards");
+  container.innerHTML = state.channels.map(ch=>{
+    const clsLabel = ch.classification==="active"?"🟢 פעיל":ch.classification==="maintenance"?"🟡 בתחזוקה":"🔴 לא פעיל";
+    return `
+    <div class="channel-card">
+      <div class="channel-card-header">
+        <div>
+          <div class="channel-name">${ch.name}</div>
+          <div class="channel-tags">
+            <span class="classification-badge classification-${ch.classification}">${clsLabel}</span>
+            <span class="tag ${ch.taxable?'tax':'notax'}">${ch.taxable?'חייב במס':'פטור ממס'}</span>
+            <span class="tag ${ch.liquid?'liquid':'illiquid'}">${ch.liquid?'נזיל':'לא נזיל'}</span>
+            ${ch.description ? `<span class="tag">${ch.description}</span>` : ""}
+          </div>
+        </div>
+        <div class="classification-buttons">
+          <button class="classification-btn ${ch.classification==='active'?'selected':''}" onclick="setField('${ch.id}','classification','active')">🟢 פעיל</button>
+          <button class="classification-btn ${ch.classification==='maintenance'?'selected':''}" onclick="setField('${ch.id}','classification','maintenance')">🟡 תחזוקה</button>
+          <button class="classification-btn ${ch.classification==='inactive'?'selected':''}" onclick="setField('${ch.id}','classification','inactive')">🔴 לא פעיל</button>
+        </div>
+      </div>
+      <div class="config-grid">
+        <div class="config-field">
+          <label>חייב במס?</label>
+          <div class="toggle-pair">
+            <button class="${ch.taxable?'on':''}" onclick="setField('${ch.id}','taxable',true)">חייב</button>
+            <button class="${!ch.taxable?'on':''}" onclick="setField('${ch.id}','taxable',false)">פטור</button>
+          </div>
+        </div>
+        <div class="config-field">
+          <label>נזילות</label>
+          <div class="toggle-pair">
+            <button class="${ch.liquid?'on':''}" onclick="setField('${ch.id}','liquid',true)">נזיל</button>
+            <button class="${!ch.liquid?'on':''}" onclick="setField('${ch.id}','liquid',false)">לא נזיל</button>
+          </div>
+        </div>
+        <div class="config-field">
+          <label>דמי ניהול (%)</label>
+          <input type="number" step="0.01" value="${ch.feePct||''}" onchange="setField('${ch.id}','feePct',parseFloat(this.value)||0)">
+        </div>
+        <div class="config-field" style="grid-column: span 2;">
+          <label>תיאור (אופציונלי)</label>
+          <input type="text" value="${ch.description||''}" onchange="setField('${ch.id}','description',this.value)" placeholder="הערה חופשית...">
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function setField(channelId, field, value){
+  const ch = channelById(channelId);
+  if (!ch) return;
+  ch[field] = value;
+  saveState();
+  renderClassification();
+  renderSummaryCard();
+}
+
+function showAddChannelForm(){
+  const box = document.getElementById("addChannelForm");
+  box.style.display = "block";
+  document.getElementById("showAddChannelBtn").style.display = "none";
+  box.innerHTML = `
+    <div class="config-grid">
+      <div class="config-field" style="grid-column: span 2;"><label>שם האפיק</label><input type="text" id="newChName" placeholder="למשל: תיק מניות בבנק"></div>
+      <div class="config-field"><label>סיווג</label>
+        <select id="newChClass"><option value="active">🟢 פעיל</option><option value="maintenance">🟡 בתחזוקה</option><option value="inactive">🔴 לא פעיל</option></select>
+      </div>
+      <div class="config-field"><label>מיסוי</label>
+        <select id="newChTax"><option value="true">חייב במס</option><option value="false">פטור ממס</option></select>
+      </div>
+      <div class="config-field"><label>נזילות</label>
+        <select id="newChLiquid"><option value="true">נזיל</option><option value="false">לא נזיל</option></select>
+      </div>
+      <div class="config-field"><label>דמי ניהול (%)</label><input type="number" step="0.01" id="newChFee" placeholder="0"></div>
+      <div class="config-field" style="grid-column: span 2;"><label>תיאור (אופציונלי)</label><input type="text" id="newChDesc" placeholder="הערה חופשית..."></div>
+    </div>
+    <div style="display:flex; gap:8px; margin-top:12px;">
+      <button class="btn btn-primary btn-small" onclick="confirmAddChannel()">הוסף אפיק</button>
+      <button class="btn btn-outline btn-small" onclick="cancelAddChannel()">ביטול</button>
+    </div>
+  `;
+}
+function cancelAddChannel(){
+  document.getElementById("addChannelForm").style.display = "none";
+  document.getElementById("showAddChannelBtn").style.display = "inline-block";
+}
+function confirmAddChannel(){
+  const name = document.getElementById("newChName").value.trim();
+  if (!name){ alert("יש להזין שם לאפיק"); return; }
+  const ch = {
+    id: "c" + Date.now(),
+    name,
+    classification: document.getElementById("newChClass").value,
+    taxable: document.getElementById("newChTax").value==="true",
+    liquid: document.getElementById("newChLiquid").value==="true",
+    feePct: parseFloat(document.getElementById("newChFee").value)||0,
+    description: document.getElementById("newChDesc").value.trim()
+  };
+  state.channels.push(ch);
+  channelFilters[ch.id] = true;
+  saveState();
+  cancelAddChannel();
+  render();
+}
+
+function renderEntryForms(){
+  const container = document.getElementById("entryForms");
+  container.innerHTML = state.channels.map(ch=>{
+    const existing = entryFor(ch.id, currentMonth);
+    const draft = drafts[ch.id] || existing || { balance:0, deposited: lastKnownDeposited(ch.id, currentMonth) };
+    return `
+      <div class="channel-card">
+        <div class="channel-name">${ch.name}</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px;">
+          ${ch.taxable ? `
+            <div>
+              <label style="font-size: 11px; color: #666;">סך הפקדות</label>
+              <input type="number" value="${draft.deposited||''}" onchange="updateDraft('${ch.id}','deposited',this.value)" style="width:100%; padding:7px; border:1px solid #ddd; border-radius:6px;">
+            </div>` : ""}
+          <div>
+            <label style="font-size: 11px; color: #666;">יתרה</label>
+            <input type="number" value="${draft.balance||''}" onchange="updateDraft('${ch.id}','balance',this.value)" style="width:100%; padding:7px; border:1px solid #ddd; border-radius:6px;">
+          </div>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+function updateDraft(channelId, field, value){
+  if (!drafts[channelId]) drafts[channelId] = {};
+  drafts[channelId][field] = parseFloat(value)||0;
+}
+
+function renderHoldingsList(){
+  const list = document.getElementById("holdingsList");
+  if (!state.holdings.length){
+    list.innerHTML = `<p class="sub">אין אחזקות עדיין. הוסף אחזקה כדי להתחיל לעקוב אחרי מניות/קרנות באקסלנס.</p>`;
+    return;
+  }
+  list.innerHTML = state.holdings.map(h=>{
+    const existing = entryFor(h.id, currentMonth);
+    const draft = holdDrafts[h.id] || existing || { pctChange:0, rawBalance:0 };
+    return `
+    <div class="holding-row">
+      <div class="holding-row-header">
+        <span class="holding-name">${h.name}</span>
+        <button class="remove-btn" onclick="removeHolding('${h.id}')" title="מחק אחזקה">🗑</button>
+      </div>
+      <div class="config-grid">
+        <div class="config-field"><label>שם</label><input type="text" value="${h.name}" onchange="setHoldingField('${h.id}','name',this.value)"></div>
+        <div class="config-field"><label>שוק</label><input type="text" value="${h.market||''}" onchange="setHoldingField('${h.id}','market',this.value)" placeholder="ארה״ב / ישראל..."></div>
+        <div class="config-field"><label>תחום</label><input type="text" value="${h.sector||''}" onchange="setHoldingField('${h.id}','sector',this.value)" placeholder="טכנולוגיה / מדד רחב..."></div>
+        <div class="config-field"><label>מטבע</label>
+          <select onchange="setHoldingField('${h.id}','currency',this.value)">
+            <option value="ILS" ${h.currency!=='USD'?'selected':''}>שקל (₪)</option>
+            <option value="USD" ${h.currency==='USD'?'selected':''}>דולר ($)</option>
+          </select>
+        </div>
+        <div class="config-field"><label>דמי ניהול (%)</label><input type="number" step="0.01" value="${h.feePct||''}" onchange="setHoldingField('${h.id}','feePct',parseFloat(this.value)||0)"></div>
+        ${h.currency==='USD' ? `<div class="config-field"><label>שער דולר ברכישה</label><input type="number" step="0.01" value="${h.purchaseRate||''}" onchange="setHoldingField('${h.id}','purchaseRate',this.value===''?null:parseFloat(this.value))"></div>` : ""}
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px; border-top:1px dashed #ddd; padding-top:10px;">
+        <div class="config-field"><label>יתרה נוכחית (${h.currency==='USD'?'$':'₪'}) - חודש ${monthLabel(currentMonth)}</label>
+          <input type="number" value="${draft.rawBalance||''}" onchange="updateHoldDraft('${h.id}','rawBalance',this.value)">
+        </div>
+        <div class="config-field"><label>אחוז שינוי בחודש (%)</label>
+          <input type="number" step="0.1" value="${draft.pctChange||''}" onchange="updateHoldDraft('${h.id}','pctChange',this.value)">
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function setHoldingField(id, field, value){
+  const h = state.holdings.find(x=>x.id===id);
+  if (!h) return;
+  h[field] = value;
+  saveState();
+  renderHoldingsList();
+}
+function updateHoldDraft(id, field, value){
+  if (!holdDrafts[id]) holdDrafts[id]={};
+  holdDrafts[id][field] = parseFloat(value)||0;
+}
+function addHolding(){
+  const h = { id:"h"+Date.now(), name:"אחזקה חדשה", market:"", sector:"", currency:"ILS", feePct:0, purchaseRate:null };
+  state.holdings.push(h);
+  saveState();
+  renderHoldingsList();
+}
+function removeHolding(id){
+  if (!confirm("למחוק את האחזקה? הנתונים ההיסטוריים שלה יימחקו.")) return;
+  state.holdings = state.holdings.filter(h=>h.id!==id);
+  delete state.entries[id];
+  saveState();
+  renderHoldingsList();
+}
+
+function loadMonth(){
+  const picker = document.getElementById("monthPicker");
+  if (picker.value){ currentMonth = picker.value; drafts={}; holdDrafts={}; render(); }
+}
+
+function saveData(){
+  state.channels.forEach(ch=>{
+    const draft = drafts[ch.id];
+    const existing = entryFor(ch.id, currentMonth);
+    if (!draft && !existing) return;
+    const list = state.entries[ch.id] ? [...state.entries[ch.id]] : [];
+    const idx = list.findIndex(e=>e.month===currentMonth);
+    const prev = idx>=0 ? list[idx] : { deposited: lastKnownDeposited(ch.id,currentMonth), balance:0 };
+    const entry = { month: currentMonth, balance: draft&&draft.balance!==undefined?draft.balance:prev.balance, deposited: draft&&draft.deposited!==undefined?draft.deposited:prev.deposited };
+    if (idx>=0) list[idx]=entry; else list.push(entry);
+    state.entries[ch.id]=list;
+  });
+  state.holdings.forEach(h=>{
+    const draft = holdDrafts[h.id];
+    const existing = entryFor(h.id, currentMonth);
+    if (!draft && !existing) return;
+    const list = state.entries[h.id] ? [...state.entries[h.id]] : [];
+    const idx = list.findIndex(e=>e.month===currentMonth);
+    const prev = idx>=0 ? list[idx] : { rawBalance:0, pctChange:0 };
+    const entry = { month: currentMonth, rawBalance: draft&&draft.rawBalance!==undefined?draft.rawBalance:prev.rawBalance, pctChange: draft&&draft.pctChange!==undefined?draft.pctChange:prev.pctChange };
+    if (idx>=0) list[idx]=entry; else list.push(entry);
+    state.entries[h.id]=list;
+  });
+  drafts={}; holdDrafts={};
+  saveState();
+  render();
+  syncToSheets();
+  const status = document.getElementById("syncStatus");
+  status.textContent = "✓ נשמר" + (sheetsUrl ? " - שולח ל-Google Sheets..." : "");
+  setTimeout(()=>{ if(!sheetsUrl) status.textContent=""; }, 2000);
+}
+
+// ============ GOOGLE SHEETS SYNC ============
+function saveSheetsUrl(){
+  sheetsUrl = document.getElementById("sheetsUrl").value.trim();
+  localStorage.setItem(SHEETS_URL_KEY, sheetsUrl);
+  document.getElementById("syncStatus").textContent = sheetsUrl ? "כתובת נשמרה. הסנכרון יתבצע בשמירה הבאה." : "";
+}
+function buildAllRowsForSync(){
+  const rows = [];
+  state.channels.forEach(c=>{
+    statsFor(c.id).forEach(r=>{
+      rows.push([c.name, c.liquid?"נזיל":"לא נזיל", c.taxable?"כן":"לא", (c.feePct||0)+"%", r.month, r.deposited, r.balance, Math.round(r.gain), Math.round(r.tax), Math.round(r.net)]);
+    });
+  });
+  state.holdings.forEach(h=>{
+    holdingStats(h.id).forEach(r=>{
+      rows.push([`(פירוט) אקסלנס - ${h.name} (${h.market||""}/${h.sector||""})`, "נזיל", "כן", (h.feePct||0)+"%", r.month, Math.round(r.deposited), Math.round(r.balanceILS), Math.round(r.gain), Math.round(r.tax), Math.round(r.net)]);
+    });
+  });
+  return rows;
+}
+function syncToSheets(){
+  if (!sheetsUrl) return;
+  const rows = buildAllRowsForSync();
+  fetch(sheetsUrl, {
+    method: "POST",
+    mode: "no-cors",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ rows })
+  }).then(()=>{
+    document.getElementById("syncStatus").textContent = "✓ סונכרן ל-Google Sheets";
+    setTimeout(()=>{ document.getElementById("syncStatus").textContent=""; }, 2500);
+  }).catch(()=>{
+    document.getElementById("syncStatus").textContent = "⚠ שגיאה בסנכרון - הנתונים נשמרו מקומית";
+  });
+}
+function exportCSV(){
+  let csv = "\uFEFFערוץ,נזיל,חייב_במס,דמי_ניהול,חודש,סך_הפקדות,מאזן,רווח_ריאלי,מס_משוער,נטו\n";
+  buildAllRowsForSync().forEach(r=>{ csv += r.join(",") + "\n"; });
+  const blob = new Blob([csv], { type:"text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href=url; a.download=`פנקס-חיסכון-${currentMonth}.csv`; a.click();
+  URL.revokeObjectURL(url);
+}
+document.getElementById("settingsToggle").addEventListener("click", ()=>{
+  const card = document.getElementById("settingsCard");
+  card.style.display = card.style.display==="none" ? "block" : "none";
+  document.getElementById("sheetsUrl").value = sheetsUrl;
+});
+
+// ============ SVG CHART BUILDERS (improved) ============
+function buildLineSVG(months, series, opts){
+  opts = opts || {};
+  const big = !!opts.big;
+  const w=680, h=big?900:320, padL=big?70:52, padR=big?36:34, padT=big?40:30, padB=big?54:36;
+  const labelFontSize = big?15:10;
+  const axisFontSize = big?13:9.5;
+  const valueFontSize = big?15:10.5;
+  const allVals = series.flatMap(s=>s.values.filter(v=>v!==null && v!==undefined));
+  const maxV = Math.max(...allVals, 1);
+  const minV = Math.min(...allVals, 0);
+  const range = (maxV-minV)||1;
+  const slot = (w-padL-padR)/Math.max(months.length-1,1);
+  const xFor = i => padL + i*slot;
+  const yFor = v => h-padB - ((v-minV)/range)*(h-padT-padB);
+
+  let svg = `<svg viewBox="0 0 ${w} ${h}" style="width:100%; height:auto; font-family:'Noto Sans Hebrew',sans-serif;">`;
+  for (let g=0; g<=4; g++){
+    const val = minV + (range/4)*g;
+    const y = yFor(val);
+    svg += `<line x1="${padL}" y1="${y}" x2="${w-padR}" y2="${y}" stroke="#D8E3DF" stroke-width="1" opacity="0.6"/>`;
+    svg += `<text x="${padL-8}" y="${y+4}" font-size="${labelFontSize}" fill="#8B9490" text-anchor="end">${fmt(val)}</text>`;
+  }
+  const labelEvery = months.length>10 ? Math.ceil(months.length/8) : 1;
+  months.forEach((m,i)=>{
+    if (i%labelEvery===0 || i===months.length-1){
+      svg += `<text x="${xFor(i)}" y="${h-padB+16}" font-size="${axisFontSize}" fill="#8B9490" text-anchor="middle">${monthLabel(m)}</text>`;
+    }
+  });
+  series.forEach(s=>{
+    let path=""; let started=false;
+    s.values.forEach((v,i)=>{
+      if (v===null || v===undefined) { started=false; return; }
+      const x=xFor(i), y=yFor(v);
+      path += (started?"L":"M") + x + "," + y + " ";
+      started = true;
+    });
+    if (s.area){
+      let areaPath = path + `L${xFor(s.values.length-1)},${h-padB} L${padL},${h-padB} Z`;
+      svg += `<path d="${areaPath}" fill="${s.color}" opacity="0.12"/>`;
+    }
+    svg += `<path d="${path}" fill="none" stroke="${s.color}" stroke-width="${s.bold?(big?3.4:2.6):(big?2.4:1.8)}" stroke-linejoin="round" stroke-linecap="round"/>`;
+    s.values.forEach((v,i)=>{
+      if (v===null || v===undefined) return;
+      const x=xFor(i), y=yFor(v);
+      svg += `<circle cx="${x}" cy="${y}" r="${big?4:3}" fill="${s.color}"/>`;
+    });
+    for (let i=s.values.length-1;i>=0;i--){
+      if (s.values[i]!==null && s.values[i]!==undefined){
+        const x = xFor(i), y = yFor(s.values[i]);
+        const above = y - (big?12:9) > padT + labelFontSize;
+        const labelY = above ? y-8 : y+(big?20:16);
+        svg += `<text x="${x-6}" y="${labelY}" font-size="${valueFontSize}" font-weight="700" fill="${s.color}" text-anchor="end">${fmt(s.values[i])}</text>`;
+        break;
+      }
+    }
+  });
+  svg += `</svg>`;
+
+  let legend = `<div style="display:flex; flex-wrap:wrap; gap:14px; margin-top:8px;">` + series.map(s=>
+    `<div class="legend-row" style="padding:0;"><span class="legend-dot" style="background:${s.color};"></span>${s.name}</div>`
+  ).join("") + `</div>`;
+  return svg+legend;
+}
+
+function buildDonutSVG(items, opts){
+  opts = opts || {};
+  const big = !!opts.big;
+  const total = items.reduce((s,i)=>s+i.value,0);
+  if (!total) return `<p style="font-size:12px;color:#8B9490;">אין נתונים עדיין.</p>`;
+  const cx=110, cy=110, r=big?92:78, rInner=big?56:48;
+  let angle=-90;
+  let svg = `<svg viewBox="0 0 220 220" style="width:100%; max-width:${big?420:260}px; height:auto; display:block; margin:0 auto;">`;
+  svg += `<g>`;
+  items.forEach(it=>{
+    const frac = it.value/total;
+    const sweep = frac*360;
+    const largeArc = sweep>180?1:0;
+    const x1 = cx + r*Math.cos(angle*Math.PI/180);
+    const y1 = cy + r*Math.sin(angle*Math.PI/180);
+    const endAngle = angle+sweep;
+    const x2 = cx + r*Math.cos(endAngle*Math.PI/180);
+    const y2 = cy + r*Math.sin(endAngle*Math.PI/180);
+    svg += `<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${largeArc} 1 ${x2},${y2} Z" fill="${it.color}"/>`;
+    angle = endAngle;
+  });
+  svg += `<circle cx="${cx}" cy="${cy}" r="${rInner}" fill="white"/>`;
+  svg += `</g>`;
+  svg += `<text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="${big?18:15}" font-weight="700" fill="#1F332F">${fmt(total)}</text>`;
+  svg += `<text x="${cx}" y="${cy+15}" text-anchor="middle" font-size="${big?12:10}" fill="#8B9490">סה״כ</text>`;
+  svg += `</svg>`;
+  let legend = items.map(it=>{
+    const p = Math.round(it.value/total*100);
+    return `<div class="legend-row"${big?' style="font-size:14px; padding:6px 0;"':''}><span class="legend-name"><span class="legend-dot" style="background:${it.color};"></span>${it.name}</span><span class="legend-value">${fmt(it.value)} (${p}%)</span></div>`;
+  }).join("");
+  return svg + `<div style="margin-top:10px;">${legend}</div>`;
+}
+
+function buildDeltaBarSVG(items, opts){
+  opts = opts || {};
+  const big = !!opts.big;
+  const w=680, h=big?820:240, padL=big?70:52, padR=big?24:16, padT=big?28:20, padB=big?70:48;
+  const axisFontSize = big?14:9.5;
+  const valueFontSize = big?14:9.5;
+  const maxAbs = Math.max(...items.map(i=>Math.abs(i.value)), 1);
+  const midY = padT + (h-padT-padB)/2;
+  const halfH = (h-padT-padB)/2;
+  const slot = (w-padL-padR)/(items.length||1);
+  const barW = Math.max(Math.min(slot-14, big?70:46), 10);
+  let svg = `<svg viewBox="0 0 ${w} ${h}" style="width:100%; height:auto; font-family:'Noto Sans Hebrew',sans-serif;">`;
+  svg += `<line x1="${padL}" y1="${midY}" x2="${w-padR}" y2="${midY}" stroke="#D8E3DF" stroke-width="1.4"/>`;
+  [1,0.5,0,-0.5,-1].forEach(f=>{
+    const val = maxAbs*f;
+    const y = midY - f*halfH;
+    svg += `<text x="${padL-8}" y="${y+3}" font-size="${axisFontSize}" fill="#8B9490" text-anchor="end">${fmt(val)}</text>`;
+  });
+  items.forEach((it,i)=>{
+    const x = padL + i*slot + (slot-barW)/2;
+    const barH = (Math.abs(it.value)/maxAbs)*halfH;
+    const y = it.value>=0 ? midY-barH : midY;
+    const color = it.value>=0 ? "#2F7D6E" : "#8C4A38";
+    svg += `<rect x="${x}" y="${y}" width="${barW}" height="${Math.max(barH,1)}" rx="4" fill="${color}"/>`;
+    svg += `<text x="${x+barW/2}" y="${it.value>=0? y-5 : y+barH+13}" font-size="${valueFontSize}" font-weight="700" fill="${color}" text-anchor="middle">${it.value>=0?'+':''}${fmt(it.value)}</text>`;
+    svg += `<text x="${x+barW/2}" y="${h-padB+16}" font-size="${axisFontSize}" fill="#8B9490" text-anchor="middle">${it.name.length>10?it.name.slice(0,9)+'…':it.name}</text>`;
+  });
+  svg += `</svg>`;
+  return svg;
+}
+
+// ============ ANALYSIS TAB ============
+function channelHistoryRows(ch){
+  return statsFor(ch.id);
+}
+
+function renderAnalysisTab(){
+  const container = document.getElementById("analysisContainer");
+  const allRows = {};
+  state.channels.forEach(ch=>{ allRows[ch.id] = channelHistoryRows(ch); });
+
+  const hasAny = Object.values(allRows).some(r=>r.length>0) || state.holdings.length>0;
+  if (!hasAny){
+    container.innerHTML = `<div class="card"><div class="empty-state"><div class="empty-icon">📭</div><p>אין נתונים להצגה עדיין.</p></div></div>`;
+    return;
+  }
+
+  container.innerHTML = state.channels.map(ch=>{
+    const rows = allRows[ch.id];
+    if (!rows.length) return "";
+    if (!analysisRange[ch.id]) analysisRange[ch.id] = { from: rows[0].month, to: rows[rows.length-1].month };
+
+    const clsLabel = ch.classification==="active"?"🟢":ch.classification==="maintenance"?"🟡":"🔴";
+    const last = rows[rows.length-1];
+    const roi = last.deposited>0 ? ((last.balance-last.deposited)/last.deposited*100) : 0;
+
+    return `
+      <div class="channel-analysis">
+        <div class="channel-analysis-header">
+          <div class="channel-analysis-title">${clsLabel} ${ch.name}</div>
+        </div>
+        <div class="channel-analysis-stats">
+          <div class="stat-item"><div class="stat-label">יתרה</div><div class="stat-value">${fmt(last.balance)}</div></div>
+          <div class="stat-item"><div class="stat-label">הפקדות</div><div class="stat-value">${fmt(last.deposited)}</div></div>
+          <div class="stat-item"><div class="stat-label">רווח</div><div class="stat-value ${last.balance-last.deposited>=0?'positive':'negative'}">${fmt(last.balance-last.deposited)}</div></div>
+          <div class="stat-item"><div class="stat-label">ROI</div><div class="stat-value ${roi>=0?'positive':'negative'}">${pct(roi)}</div></div>
+        </div>
+
+        <div class="chart-box" id="box_chart_full_${ch.id}">
+          <div class="chart-box-header">
+            <div class="chart-box-title">📈 גרף היסטוריה מלאה</div>
+            ${expandBtn('chart_full_'+ch.id)}
+          </div>
+          <div class="chart-box-sub">כל הנתונים שהוזנו לאפיק זה, מההתחלה ועד היום.</div>
+          <div id="render_chart_full_${ch.id}"></div>
+        </div>
+
+        <div class="chart-box" id="box_chart_range_${ch.id}">
+          <div class="chart-box-header">
+            <div class="chart-box-title">🔎 גרף לפי טווח נבחר</div>
+            ${expandBtn('chart_range_'+ch.id)}
+          </div>
+          <div class="month-range-controls">
+            <div class="field"><label>מחודש</label><input type="month" id="rangeFrom-${ch.id}" value="${analysisRange[ch.id].from}"></div>
+            <div class="field"><label>עד חודש</label><input type="month" id="rangeTo-${ch.id}" value="${analysisRange[ch.id].to}"></div>
+            <button onclick="updateChannelRange('${ch.id}')">עדכן</button>
+          </div>
+          <div id="render_chart_range_${ch.id}"></div>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <tr><th>חודש</th><th>יתרה</th><th>הפקדה</th><th>רווח החודש</th><th>הפרש (₪)</th><th>הפרש (%)</th><th>ROI%</th><th>ד. ניהול/חודש</th></tr>
+            ${rows.map((r,i)=>{
+              const prev = i>0 ? rows[i-1].balance : r.balance;
+              const delta = r.balance-prev;
+              const deltaPct = prev>0 ? (delta/prev*100) : 0;
+              const rRoi = r.deposited>0 ? ((r.balance-r.deposited)/r.deposited*100) : 0;
+              return `<tr>
+                <td>${monthLabel(r.month)}</td>
+                <td>${fmt(r.balance)}</td>
+                <td>${fmt(r.deposited)}</td>
+                <td class="${r.balance-r.deposited>=0?'text-positive':'text-negative'}">${fmt(r.balance-r.deposited)}</td>
+                <td class="${delta>=0?'text-positive':'text-negative'}">${delta>=0?'+':''}${fmt(delta)}</td>
+                <td class="${delta>=0?'text-positive':'text-negative'}">${pct(deltaPct)}</td>
+                <td>${pct(rRoi)}</td>
+                <td>${fmt(r.feeMonthly||0)}</td>
+              </tr>`;
+            }).join("")}
+          </table>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  state.channels.forEach(ch=>{
+    const rows = allRows[ch.id];
+    if (!rows || !rows.length) return;
+    const fullId = 'chart_full_'+ch.id;
+    registerChart(fullId, (big)=>buildLineSVG(rows.map(r=>r.month), [{ name:"יתרה נטו", color:PALETTE[0], bold:true, area:true, values: rows.map(r=>r.net) }], {big}));
+    const target = document.getElementById('render_'+fullId);
+    if (target) target.innerHTML = chartRegistry[fullId](false);
+    updateChannelRange(ch.id, true);
+  });
+
+  renderExcellenceHoldingsAnalysis();
+}
+
+function updateChannelRange(channelId, skipReadInputs){
+  const rows = channelHistoryRows(channelById(channelId));
+  let from, to;
+  if (skipReadInputs){
+    from = analysisRange[channelId].from; to = analysisRange[channelId].to;
+  } else {
+    from = document.getElementById(`rangeFrom-${channelId}`).value;
+    to = document.getElementById(`rangeTo-${channelId}`).value;
+    analysisRange[channelId] = { from, to };
+  }
+  const filtered = rows.filter(r=>r.month>=from && r.month<=to);
+  const rangeId = 'chart_range_'+channelId;
+  const target = document.getElementById('render_'+rangeId);
+  if (!target) return;
+  if (!filtered.length){
+    registerChart(rangeId, ()=>`<p style="font-size:var(--fs-2);color:#8B9490;">אין נתונים בטווח שנבחר.</p>`);
+  } else {
+    registerChart(rangeId, (big)=>buildLineSVG(filtered.map(r=>r.month), [{ name:"יתרה נטו", color:PALETTE[1], bold:true, area:true, values: filtered.map(r=>r.net) }], {big}));
+  }
+  target.innerHTML = chartRegistry[rangeId](!!expandedCharts[rangeId]);
+}
+
+function renderExcellenceHoldingsAnalysis(){
+  if (!state.holdings.length) return;
+  const container = document.getElementById("analysisContainer");
+  const box = document.createElement("div");
+  box.className = "card";
+  box.style.gridColumn = "1 / -1";
+  let html = `<h2>📦 אקסלנס - פירוט אחזקות</h2>`;
+
+  const latestByHolding = state.holdings.map(h=>({ h, last: latestHolding(h.id) })).filter(x=>x.last);
+  if (latestByHolding.length){
+    const byMarket = {}; const bySector = {}; let usdSum=0, ilsSum=0;
+    latestByHolding.forEach(({h,last})=>{
+      byMarket[h.market||"לא צוין"] = (byMarket[h.market||"לא צוין"]||0)+last.balanceILS;
+      bySector[h.sector||"לא צוין"] = (bySector[h.sector||"לא צוין"]||0)+last.balanceILS;
+      if (currencyForHolding(h)==="USD") usdSum+=last.balanceILS; else ilsSum+=last.balanceILS;
+    });
+    html += `<div style="display:grid; grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); gap:16px; max-width:100%;">`;
+    const byMarketItems = Object.entries(byMarket).map(([k,v],i)=>({name:k,value:v,color:PALETTE[i%PALETTE.length]}));
+    const bySectorItems = Object.entries(bySector).map(([k,v],i)=>({name:k,value:v,color:PALETTE[(i+3)%PALETTE.length]}));
+    const currencyItems = [{name:"דולרי ($)",value:usdSum,color:PALETTE[3]},{name:"שקלי (₪)",value:ilsSum,color:PALETTE[1]}];
+    registerChart('chart_donut_market', (big)=>buildDonutSVG(byMarketItems, {big}));
+    registerChart('chart_donut_sector', (big)=>buildDonutSVG(bySectorItems, {big}));
+    registerChart('chart_donut_currency', (big)=>buildDonutSVG(currencyItems, {big}));
+    html += `<div class="chart-box" id="box_chart_donut_market"><div class="chart-box-header"><div class="chart-box-title">פילוח לפי שוק</div>${expandBtn('chart_donut_market')}</div><div id="render_chart_donut_market">${buildDonutSVG(byMarketItems)}</div></div>`;
+    html += `<div class="chart-box" id="box_chart_donut_sector"><div class="chart-box-header"><div class="chart-box-title">פילוח לפי תחום</div>${expandBtn('chart_donut_sector')}</div><div id="render_chart_donut_sector">${buildDonutSVG(bySectorItems)}</div></div>`;
+    html += `<div class="chart-box" id="box_chart_donut_currency"><div class="chart-box-header"><div class="chart-box-title">חשיפה מטבעית</div>${expandBtn('chart_donut_currency')}</div><div id="render_chart_donut_currency">${buildDonutSVG(currencyItems)}</div></div>`;
+    const fxItems = state.holdings.map(h=>{ const diff=holdingFxDiff(h); return diff!==null?{name:h.name,value:diff}:null; }).filter(Boolean);
+    if (fxItems.length){
+      registerChart('chart_fx_diff', (big)=>buildDeltaBarSVG(fxItems, {big}));
+      html += `<div class="chart-box" id="box_chart_fx_diff" style="grid-column: span 2;"><div class="chart-box-header"><div class="chart-box-title">רווח/הפסד משער החליפין</div>${expandBtn('chart_fx_diff')}</div><div id="render_chart_fx_diff">${buildDeltaBarSVG(fxItems)}</div></div>`;
+    }
+    html += `</div>`;
+
+    html += `<div class="table-scroll" style="margin-top:16px;"><table><tr><th>אחזקה</th><th>שוק</th><th>תחום</th><th>מטבע</th><th>יתרה (₪)</th><th>רווח</th><th>ROI%</th></tr>`;
+    latestByHolding.forEach(({h,last})=>{
+      const roi = last.deposited>0 ? ((last.balanceILS-last.deposited)/last.deposited*100) : 0;
+      html += `<tr><td>${h.name}</td><td>${h.market||"-"}</td><td>${h.sector||"-"}</td><td>${currencyForHolding(h)}</td><td>${fmt(last.balanceILS)}</td><td class="${last.balanceILS-last.deposited>=0?'text-positive':'text-negative'}">${fmt(last.balanceILS-last.deposited)}</td><td>${pct(roi)}</td></tr>`;
+    });
+    html += `</table></div>`;
+  } else {
+    html += `<p class="sub">הוסף אחזקות ונתוני חודש כדי לראות פירוט.</p>`;
+  }
+
+  box.innerHTML = html;
+  container.appendChild(box);
+}
+
+// ============ DELTA TAB ============
+function renderDeltaTab(){
+  const filtersContainer = document.getElementById("channelFilters");
+  filtersContainer.innerHTML = state.channels.map(ch=>{
+    if (channelFilters[ch.id]===undefined) channelFilters[ch.id]=true;
+    return `<label class="filter-checkbox"><input type="checkbox" ${channelFilters[ch.id]?"checked":""} onchange="toggleChannelFilter('${ch.id}')">${ch.name}</label>`;
+  }).join("");
+  renderDeltaGraphs();
+}
+
+function toggleChannelFilter(id){ channelFilters[id]=!channelFilters[id]; renderDeltaGraphs(); }
+
+function getAllMonths(){
+  const set = new Set();
+  state.channels.forEach(ch=>{ channelHistoryRows(ch).forEach(r=>set.add(r.month)); });
+  return Array.from(set).sort();
+}
+
+function renderDeltaGraphs(){
+  const container = document.getElementById("deltaGraphsContainer");
+  const months = getAllMonths();
+  if (!months.length){
+    container.innerHTML = `<div class="graph-card"><div class="empty-state"><div class="empty-icon">📭</div><p>אין נתונים להצגה</p></div></div>`;
+    return;
+  }
+
+  const overallItems = months.slice(1).map((m,i)=>{
+    const prevMonth = months[i];
+    let deltaSum = 0;
+    state.channels.forEach(ch=>{
+      if (!channelFilters[ch.id]) return;
+      const rows = channelHistoryRows(ch);
+      const curr = rows.filter(r=>r.month<=m).slice(-1)[0];
+      const prev = rows.filter(r=>r.month<=prevMonth).slice(-1)[0];
+      const cB = curr?curr.balance:0, pB = prev?prev.balance:0;
+      deltaSum += (cB-pB);
+    });
+    return { name: monthLabel(m), value: deltaSum };
+  });
+
+  registerChart('chart_delta_overall', (big)=>overallItems.length ? buildDeltaBarSVG(overallItems, {big}) : '<p style="font-size:var(--fs-2);color:#8B9490;">צריך לפחות שתי נקודות מעקב.</p>');
+  let html = `
+    <div class="graph-card" id="box_chart_delta_overall">
+      <div class="chart-box-header">
+        <div class="graph-title" style="margin-bottom:0;">📊 שינוי כולל בהון הנטו (אפיקים מסומנים בלבד)</div>
+        ${expandBtn('chart_delta_overall')}
+      </div>
+      <div id="render_chart_delta_overall">${overallItems.length ? buildDeltaBarSVG(overallItems) : '<p style="font-size:var(--fs-2);color:#8B9490;">צריך לפחות שתי נקודות מעקב.</p>'}</div>
+    </div>
+  `;
+
+  state.channels.forEach(ch=>{
+    if (!channelFilters[ch.id]) return;
+    const rows = channelHistoryRows(ch);
+    if (rows.length<2) return;
+    const items = rows.slice(1).map((r,i)=>({ name: monthLabel(r.month), value: r.balance-rows[i].balance }));
+    registerChart('chart_delta_'+ch.id, (big)=>buildDeltaBarSVG(items, {big}));
+    html += `
+      <div class="graph-card" id="box_chart_delta_${ch.id}">
+        <div class="chart-box-header">
+          <div class="graph-title" style="margin-bottom:0;">${ch.name} - הפרשים חודשיים</div>
+          ${expandBtn('chart_delta_'+ch.id)}
+        </div>
+        <div id="render_chart_delta_${ch.id}">${buildDeltaBarSVG(items)}</div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+// ============ BOOT ============
+loadState();
+document.getElementById("monthPicker").value = currentMonth;
+render();
+const bs = document.getElementById("buildStamp");
+if (bs) bs.textContent = "נטען: " + new Date().toLocaleString("he-IL");
+</script>
+</body>
+</html>
