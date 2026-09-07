@@ -201,6 +201,16 @@
   .legend-name { display: flex; align-items: center; }
   .legend-value { font-weight: 500; font-variant-numeric: tabular-nums; }
 
+  .delta-modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(15,25,22,0.5);
+    align-items: center; justify-content: center; z-index: 200; padding: 16px;
+  }
+  .delta-modal-overlay.open { display: flex; }
+  .delta-modal-box {
+    background: var(--paper); border-radius: 14px; padding: 22px; width: 100%; max-width: 340px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+  }
+
   @media (max-width: 640px) {
     .analysis-container { grid-template-columns: 1fr; }
     .channel-analysis-stats { grid-template-columns: repeat(2,1fr); }
@@ -270,7 +280,10 @@
       <input type="url" id="sheetsUrl" placeholder="https://script.google.com/macros/s/.../exec" style="width:100%; padding:9px; border:1px solid #ddd; border-radius:6px;">
       <button class="btn btn-gold btn-small" onclick="saveSheetsUrl()" style="margin-top:8px;">שמור כתובת</button>
       <p class="sub" style="margin-top:8px;">בכל שמירת נקודת מעקב, הנתונים יישלחו אוטומטית לגיליון המחובר.</p>
-      <button class="btn btn-outline btn-small" onclick="exportCSV()" style="margin-top: 4px;">⬇ ייצוא ידני ל-CSV</button>
+      <div style="display:flex; gap:8px; margin-top:4px; flex-wrap:wrap;">
+        <button class="btn btn-outline btn-small" onclick="exportCSV()">⬇ ייצוא ידני ל-CSV</button>
+        <button class="btn btn-outline btn-small" onclick="backupToSheets()">☁ גיבוי ידני ל-Sheets</button>
+      </div>
     </div>
   </div>
 
@@ -298,6 +311,24 @@
 
   <div style="text-align:center; padding:18px 10px; font-size:var(--fs-1); color:var(--muted);">
     גרסת קובץ: v11 &middot; <span id="buildStamp"></span>
+  </div>
+</div>
+
+<div id="deltaModalOverlay" class="delta-modal-overlay" onclick="if(event.target===this) closeDeltaModal()">
+  <div class="delta-modal-box">
+    <h3 id="deltaModalTitle" style="color:var(--bottle); margin-bottom:4px;"></h3>
+    <p class="sub">יתרה נוכחית: <strong id="deltaModalCurrent"></strong></p>
+    <div class="toggle-pair" style="margin-bottom:10px;">
+      <button type="button" id="deltaAddBtn" class="on" onclick="setDeltaSign(1)">➕ הוספה</button>
+      <button type="button" id="deltaSubBtn" onclick="setDeltaSign(-1)">➖ הורדה</button>
+    </div>
+    <label style="font-size:11px; color:#666; display:block; margin-bottom:4px;">סכום לשינוי</label>
+    <input type="number" id="deltaAmountInput" min="0" placeholder="0" oninput="updateDeltaPreview()" style="width:100%; padding:9px; border:1px solid #ddd; border-radius:6px;">
+    <p class="sub" style="margin-top:10px;">יתרה חדשה: <strong id="deltaModalResult"></strong></p>
+    <div style="display:flex; gap:8px; margin-top:6px;">
+      <button type="button" class="btn btn-primary" style="flex:1;" onclick="confirmDeltaModal()">עדכן יתרה</button>
+      <button type="button" class="btn btn-outline" style="flex:1;" onclick="closeDeltaModal()">ביטול</button>
+    </div>
   </div>
 </div>
 
@@ -694,7 +725,10 @@ function renderEntryForms(){
             </div>` : ""}
           <div>
             <label style="font-size: 11px; color: #666;">יתרה</label>
-            <input type="number" value="${draft.balance||''}" onchange="updateDraft('${ch.id}','balance',this.value)" style="width:100%; padding:7px; border:1px solid #ddd; border-radius:6px;">
+            <div style="display:flex; gap:6px;">
+              <input type="number" id="balInput_${ch.id}" value="${draft.balance||''}" onchange="updateDraft('${ch.id}','balance',this.value)" style="width:100%; padding:7px; border:1px solid #ddd; border-radius:6px;">
+              <button type="button" class="btn btn-outline btn-small" title="הוסף/הורד סכום מהיתרה" onclick="openDeltaModal('${ch.id}')" style="flex-shrink:0; padding:0 12px;">➕</button>
+            </div>
           </div>
         </div>
       </div>`;
@@ -704,6 +738,51 @@ function renderEntryForms(){
 function updateDraft(channelId, field, value){
   if (!drafts[channelId]) drafts[channelId] = {};
   drafts[channelId][field] = parseFloat(value)||0;
+}
+
+// ============ BALANCE DELTA POPUP (add/subtract instead of typing the full balance) ============
+let deltaModalState = { channelId: null, sign: 1 };
+function currentBalanceFor(channelId){
+  const draft = drafts[channelId] || entryFor(channelId, currentMonth);
+  return draft && draft.balance!=null ? draft.balance : 0;
+}
+function openDeltaModal(channelId){
+  const ch = channelById(channelId);
+  if (!ch) return;
+  deltaModalState = { channelId, sign: 1 };
+  document.getElementById("deltaModalTitle").textContent = ch.name;
+  document.getElementById("deltaAmountInput").value = "";
+  setDeltaSign(1);
+  document.getElementById("deltaModalOverlay").classList.add("open");
+  document.getElementById("deltaAmountInput").focus();
+}
+function closeDeltaModal(){
+  document.getElementById("deltaModalOverlay").classList.remove("open");
+  deltaModalState = { channelId: null, sign: 1 };
+}
+function setDeltaSign(sign){
+  deltaModalState.sign = sign;
+  document.getElementById("deltaAddBtn").classList.toggle("on", sign===1);
+  document.getElementById("deltaSubBtn").classList.toggle("on", sign===-1);
+  updateDeltaPreview();
+}
+function updateDeltaPreview(){
+  if (!deltaModalState.channelId) return;
+  const current = currentBalanceFor(deltaModalState.channelId);
+  const amount = parseFloat(document.getElementById("deltaAmountInput").value) || 0;
+  const result = current + deltaModalState.sign*amount;
+  document.getElementById("deltaModalCurrent").textContent = fmt(current);
+  document.getElementById("deltaModalResult").textContent = fmt(result);
+}
+function confirmDeltaModal(){
+  const channelId = deltaModalState.channelId;
+  if (!channelId) return;
+  const current = currentBalanceFor(channelId);
+  const amount = parseFloat(document.getElementById("deltaAmountInput").value) || 0;
+  const newBalance = current + deltaModalState.sign*amount;
+  updateDraft(channelId, "balance", newBalance);
+  closeDeltaModal();
+  renderEntryForms();
 }
 
 function renderHoldingsList(){
@@ -850,6 +929,11 @@ function exportCSV(){
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a"); a.href=url; a.download=`פנקס-חיסכון-${currentMonth}.csv`; a.click();
   URL.revokeObjectURL(url);
+}
+function backupToSheets(){
+  if (!sheetsUrl){ alert("קודם צריך להזין ולשמור כתובת Web App של Google Sheets למעלה."); return; }
+  document.getElementById("syncStatus").textContent = "שולח גיבוי ל-Google Sheets...";
+  syncToSheets();
 }
 document.getElementById("settingsToggle").addEventListener("click", ()=>{
   const card = document.getElementById("settingsCard");
