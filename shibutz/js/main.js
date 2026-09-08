@@ -54,8 +54,12 @@
         var dateInput = document.getElementById('new-task-date');
         var date = dateInput ? dateInput.value : APP.state.todayISO();
         if (!date) return;
-        APP.task.createTaskForDate(date);
+        var result = APP.task.createTaskForDate(date);
         APP.render.renderTaskTab();
+        if (result.wasNew && result.task.posts.length > 0) {
+          APP.modal.open(APP.render.carriedPostsModalHtml(result.task), { onDismiss: function () { APP.modal.close(); } });
+          return;
+        }
         var task = APP.state.getCurrentTask();
         if (task && task.posts.length === 0) {
           APP.task.startStepper();
@@ -86,25 +90,39 @@
         APP.task.startStepper(post);
         openPostModal();
       },
-      'delete-post': function (el) { APP.task.deletePost(el.dataset.postId); APP.render.renderTaskTab(); },
+      'delete-post': function (el) {
+        APP.task.deletePost(el.dataset.postId);
+        rerunAutoAssignIfNeeded();
+        APP.render.renderTaskTab();
+      },
       'toggle-absent': function (el) {
         APP.task.toggleAbsent(el.dataset.traineeId);
-        var task = APP.state.getCurrentTask();
-        if (task && task.assignment) {
-          task.assignment = APP.assign.runAutoAssign(task, APP.state.get().pools);
-          task.updatedAt = Date.now();
-          APP.state.save();
-        }
+        rerunAutoAssignIfNeeded();
         APP.render.renderTaskTab();
       },
       'add-guest': function () {
         var inp = document.getElementById('new-guest-name');
+        var genderSel = document.getElementById('new-guest-gender');
         if (!inp || !inp.value.trim()) return;
-        APP.task.addGuest(inp.value.trim());
+        APP.task.addGuest(inp.value.trim(), genderSel ? genderSel.value : 'm');
+        rerunAutoAssignIfNeeded();
         APP.render.renderTaskTab();
       },
-      'remove-guest': function (el) { APP.task.removeGuest(el.dataset.guestId); APP.render.renderTaskTab(); }
+      'remove-guest': function (el) {
+        APP.task.removeGuest(el.dataset.guestId);
+        rerunAutoAssignIfNeeded();
+        APP.render.renderTaskTab();
+      }
     };
+  }
+
+  function rerunAutoAssignIfNeeded() {
+    var task = APP.state.getCurrentTask();
+    if (task && task.assignment) {
+      task.assignment = APP.assign.runAutoAssign(task, APP.state.get().pools);
+      task.updatedAt = Date.now();
+      APP.state.save();
+    }
   }
 
   function wireFarmerPrefs() {
@@ -161,6 +179,22 @@
           }
           APP.modal.close();
           APP.render.renderTaskTab();
+        }
+        return;
+      }
+      if (e.target.closest('[data-action="carried-posts-done"]')) {
+        var carriedTask = APP.state.getCurrentTask();
+        if (carriedTask) {
+          APP.util.qsa('#modal-box input[type="checkbox"][data-post-id]').forEach(function (cb) {
+            if (!cb.checked) APP.task.deletePostNoConfirm(cb.dataset.postId);
+          });
+        }
+        APP.modal.close();
+        APP.render.renderTaskTab();
+        var afterCarried = APP.state.getCurrentTask();
+        if (afterCarried && afterCarried.posts.length === 0) {
+          APP.task.startStepper();
+          openPostModal();
         }
         return;
       }
