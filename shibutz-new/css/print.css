@@ -1,0 +1,71 @@
+@page {
+  size: landscape;
+  margin: 12mm;
+}
+
+body {
+  background: white !important;
+}
+
+.login-screen, .no-print, .drag-ghost {
+  display: none !important;
+}
+
+#app-shell {
+  padding: 0 !important;
+  max-width: none !important;
+}
+
+.header {
+  background: white !important;
+  color: black !important;
+  padding: 6px 0 !important;
+  margin-bottom: 8px !important;
+  border: none !important;
+}
+.header p { color: black !important; }
+
+.card {
+  border: none !important;
+  padding: 0 !important;
+  margin-bottom: 10px !important;
+  box-shadow: none !important;
+}
+
+.tab-content { display: none !important; }
+.tab-content.active { display: block !important; }
+
+.meta-table th, .meta-table td { border: 1px solid #999; padding: 4px 8px; }
+.meta-table .cell-input {
+  border: none !important;
+  background: transparent !important;
+  font-family: inherit;
+  color: black;
+}
+
+.assign-table {
+  width: 100%;
+  border: 2px solid black;
+}
+.assign-table th, .assign-table td {
+  border: 1px solid #444 !important;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+.assign-table th { background: #eee !important; }
+.assign-table tr { page-break-inside: avoid; }
+
+.post-leader-name { color: black !important; }
+.empty-cell { background: none !important; }
+
+.spare-panel {
+  background: white !important;
+  border: 1px dashed #999;
+}
+.spare-chip { border: 1px solid #999 !important; }
+
+.cell.drop-target, .cell.cell-dragging, .cell.cell-armed, .cell.cell-picked { outline: none !important; opacity: 1 !important; background: none !important; }
+
+@media print {
+  .preview-toolbar { display: none !important; }
+}
