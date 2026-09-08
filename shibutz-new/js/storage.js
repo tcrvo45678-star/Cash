@@ -38,7 +38,19 @@ APP.storage = (function () {
     });
     data.pools.postTemplates = data.pools.postTemplates || [];
     data.tasks = data.tasks || [];
+    data.tasks.forEach(function (task) {
+      (task.posts || []).forEach(function (post) {
+        post.requirements = post.requirements || {};
+        var r = post.requirements;
+        if (typeof r.strength !== 'number') r.strength = 4;
+        if (typeof r.dexterity !== 'number') r.dexterity = 4;
+        if (!r.responsibilityMinCount) r.responsibilityMinCount = { level: 5, count: 1 };
+        if (!r.leadershipMinCount) r.leadershipMinCount = { level: 5, count: 1 };
+        if (!r.genderMinCount) r.genderMinCount = { male: 0, female: 0 };
+      });
+    });
     if (typeof data.currentTaskId === 'undefined') data.currentTaskId = null;
+    if (typeof data.backupUrl !== 'string') data.backupUrl = '';
     return data;
   }
 
@@ -61,6 +73,7 @@ APP.storage = (function () {
   function save(data) {
     try {
       localStorage.setItem(KEY, JSON.stringify(data));
+      if (window.APP && APP.backup) APP.backup.onSave();
       return true;
     } catch (e) {
       console.error('שגיאה בשמירת הנתונים', e);

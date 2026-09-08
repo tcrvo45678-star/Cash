@@ -29,9 +29,14 @@ window.APP = window.APP || {};
 APP.assign = (function () {
   function isGenderTrait(trait) { return trait === 'gender-male' || trait === 'gender-female'; }
 
+  // Defensive against posts saved before a requirement field existed (an
+  // older export/import, or one carried forward from before this session's
+  // changes) - without this, a single malformed post throws and blocks
+  // runAutoAssign for the whole task, which used to also block the modal
+  // that triggered it from ever closing.
   function quotaTarget(post, trait) {
-    if (trait === 'responsibility') return post.requirements.responsibilityMinCount.count;
-    if (trait === 'leadership') return post.requirements.leadershipMinCount.count;
+    if (trait === 'responsibility') return (post.requirements.responsibilityMinCount && post.requirements.responsibilityMinCount.count) || 0;
+    if (trait === 'leadership') return (post.requirements.leadershipMinCount && post.requirements.leadershipMinCount.count) || 0;
     var g = post.requirements.genderMinCount;
     if (trait === 'gender-male') return (g && g.male) || 0;
     if (trait === 'gender-female') return (g && g.female) || 0;
@@ -96,8 +101,8 @@ APP.assign = (function () {
     var relaxedLevel = {};
     task.posts.forEach(function (post) {
       relaxedLevel[post.id] = {
-        responsibility: post.requirements.responsibilityMinCount.level,
-        leadership: post.requirements.leadershipMinCount.level,
+        responsibility: (post.requirements.responsibilityMinCount && post.requirements.responsibilityMinCount.level) || 5,
+        leadership: (post.requirements.leadershipMinCount && post.requirements.leadershipMinCount.level) || 5,
         'gender-male': 1,
         'gender-female': 1
       };

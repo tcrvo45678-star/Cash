@@ -7,6 +7,7 @@ window.APP = window.APP || {};
 // access control for sensitive information.
 APP.auth = (function () {
   var SESSION_KEY = 'shibutz_unlocked';
+  var TRAINEES_SESSION_KEY = 'shibutz_trainees_unlocked';
 
   function simpleHash(str) {
     var h = 0;
@@ -33,7 +34,8 @@ APP.auth = (function () {
 
   function setPassword(newPassword) {
     var d = APP.state.get();
-    d.auth = { passwordHash: simpleHash(newPassword) };
+    d.auth = d.auth || {};
+    d.auth.passwordHash = simpleHash(newPassword);
     APP.state.save();
   }
 
@@ -43,12 +45,46 @@ APP.auth = (function () {
     return simpleHash(candidate) === d.auth.passwordHash;
   }
 
+  // Second, independent gate for the "חניכים" tab specifically - same
+  // lightweight client-side model as the main password (see note above),
+  // just scoped narrower so day-to-day screens (the grid, print, etc.)
+  // stay visible without it.
+  function hasTraineesPassword() {
+    var d = APP.state.get();
+    return !!(d.auth && d.auth.traineesPasswordHash);
+  }
+
+  function setTraineesPassword(newPassword) {
+    var d = APP.state.get();
+    d.auth = d.auth || {};
+    d.auth.traineesPasswordHash = simpleHash(newPassword);
+    APP.state.save();
+  }
+
+  function checkTraineesPassword(candidate) {
+    var d = APP.state.get();
+    if (!d.auth || !d.auth.traineesPasswordHash) return false;
+    return simpleHash(candidate) === d.auth.traineesPasswordHash;
+  }
+
+  function isTraineesUnlockedThisSession() {
+    try { return sessionStorage.getItem(TRAINEES_SESSION_KEY) === '1'; } catch (e) { return false; }
+  }
+  function markTraineesUnlocked() {
+    try { sessionStorage.setItem(TRAINEES_SESSION_KEY, '1'); } catch (e) {}
+  }
+
   return {
     isUnlockedThisSession: isUnlockedThisSession,
     markUnlocked: markUnlocked,
     lock: lock,
     hasPassword: hasPassword,
     setPassword: setPassword,
-    checkPassword: checkPassword
+    checkPassword: checkPassword,
+    hasTraineesPassword: hasTraineesPassword,
+    setTraineesPassword: setTraineesPassword,
+    checkTraineesPassword: checkTraineesPassword,
+    isTraineesUnlockedThisSession: isTraineesUnlockedThisSession,
+    markTraineesUnlocked: markTraineesUnlocked
   };
 })();
