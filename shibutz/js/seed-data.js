@@ -37,9 +37,16 @@ APP.seedData = (function () {
   }
 
   function seedInitialTeamIfNeeded() {
-    if (hasFlag()) return;
-
+    // Always check if data is actually present, regardless of flag
+    // (in case localStorage was cleared or data is missing)
     var d = APP.state.get();
+    var leadersMissing = SEED_LEADERS.some(function (name) { return !existsByName(d.pools.leaders, name); });
+    var traineesMissing = SEED_TRAINEES.some(function (name) { return !existsByName(d.pools.trainees, name); });
+    var farmersMissing = SEED_FARMERS.some(function (name) { return !existsByName(d.pools.farmers, name); });
+
+    // If flag is set AND all data is present, skip
+    if (hasFlag() && !leadersMissing && !traineesMissing && !farmersMissing) return;
+
     var addedLeaders = 0, addedTrainees = 0, addedFarmers = 0;
 
     SEED_LEADERS.forEach(function (name) {
@@ -68,9 +75,8 @@ APP.seedData = (function () {
       }
     });
 
-    setFlag();
-
     if (addedLeaders || addedTrainees || addedFarmers) {
+      setFlag();
       alert(
         'נטענו ' + addedLeaders + ' אנשי צוות, ' + addedTrainees + ' חניכים' +
         (addedFarmers ? ' וחקלאי אחד' : '') +
