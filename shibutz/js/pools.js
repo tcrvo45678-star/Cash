@@ -7,7 +7,6 @@ APP.pools = (function () {
     renderTrainees();
     renderLeaders();
     renderFarmers();
-    renderTemplates();
   }
 
   function renderTrainees() {
@@ -65,39 +64,56 @@ APP.pools = (function () {
   }
 
   function renderLeaders() { renderSimplePool('tab-leaders', 'leaders', 'אנשי צוות', 'הוסף איש צוות'); }
-  function renderFarmers() { renderSimplePool('tab-farmers', 'farmers', 'חקלאים', 'הוסף חקלאי'); }
 
-  function renderTemplates() {
-    var el = document.getElementById('tab-templates');
+  function renderFarmers() {
+    var el = document.getElementById('tab-farmers');
     if (!el) return;
-    var list = APP.state.get().pools.postTemplates;
+    var list = APP.state.get().pools.farmers;
+    var traineesById = {};
+    APP.state.get().pools.trainees.forEach(function (t) { traineesById[t.id] = t; });
     el.innerHTML = '<div class="card">' +
-      '<h2>תבניות עמדות עבודה</h2>' +
-      '<p class="muted">דרישות ברירת מחדל שאפשר לבחור בהן בזמן הוספת עמדה למשימה יומית.</p>' +
+      '<h2>חקלאים</h2>' +
       '<div class="table-scroll"><table class="pool-table">' +
-      '<thead><tr><th>שם</th><th>חוזק</th><th>זריזות</th><th>אחראיות (רמה x כמות)</th><th>הנהגה (רמה x כמות)</th><th>מס\' עובדים</th><th>פעיל</th><th></th></tr></thead>' +
+      '<thead><tr><th>שם</th><th>טלפון</th><th>מיקום</th><th>חניכים מועדפים</th><th>פעיל</th><th></th></tr></thead>' +
       '<tbody>' +
-      list.map(function (tp) {
-        var r = tp.defaultRequirements;
-        return '<tr data-id="' + tp.id + '">' +
-          '<td><input class="pool-input" data-field="name" aria-label="שם" value="' + U.escapeHtml(tp.name) + '"></td>' +
-          '<td><select data-field="strength" aria-label="חוזק">' + U.ratingOptions(r.strength) + '</select></td>' +
-          '<td><select data-field="dexterity" aria-label="זריזות">' + U.ratingOptions(r.dexterity) + '</select></td>' +
-          '<td><select data-field="resp-level" aria-label="אחראיות רמה">' + U.ratingOptions(r.responsibilityMinCount.level) + '</select> x ' +
-          '<input type="number" min="0" class="num-mini" data-field="resp-count" aria-label="אחראיות כמות" value="' + r.responsibilityMinCount.count + '"></td>' +
-          '<td><select data-field="lead-level" aria-label="הנהגה רמה">' + U.ratingOptions(r.leadershipMinCount.level) + '</select> x ' +
-          '<input type="number" min="0" class="num-mini" data-field="lead-count" aria-label="הנהגה כמות" value="' + r.leadershipMinCount.count + '"></td>' +
-          '<td><input type="number" min="1" class="num-mini" data-field="workerCount" aria-label="מספר עובדים" value="' + tp.defaultWorkerCount + '"></td>' +
-          '<td><input type="checkbox" data-field="active" aria-label="פעיל" ' + (tp.active !== false ? 'checked' : '') + '></td>' +
-          '<td><button class="btn-tiny btn-danger" data-action="delete-postTemplates">מחק</button></td>' +
+      list.map(function (f) {
+        var prefNames = (f.preferredTraineeIds || [])
+          .map(function (id) { var t = traineesById[id]; return t ? U.escapeHtml(t.name) : null; })
+          .filter(Boolean).join(', ');
+        return '<tr data-id="' + f.id + '">' +
+          '<td><input class="pool-input" data-field="name" aria-label="שם" value="' + U.escapeHtml(f.name) + '"></td>' +
+          '<td><input class="pool-input" data-field="phone" aria-label="טלפון" value="' + U.escapeHtml(f.phone || '') + '"></td>' +
+          '<td><input class="pool-input" data-field="location" aria-label="מיקום" value="' + U.escapeHtml(f.location || '') + '"></td>' +
+          '<td><span class="muted">' + (prefNames || '-') + '</span> ' +
+            '<button class="btn-tiny" data-action="edit-farmer-prefs" data-farmer-id="' + f.id + '">ערוך</button></td>' +
+          '<td><input type="checkbox" data-field="active" aria-label="פעיל" ' + (f.active !== false ? 'checked' : '') + '></td>' +
+          '<td><button class="btn-tiny btn-danger" data-action="delete-farmers">מחק</button></td>' +
           '</tr>';
       }).join('') +
-      (list.length ? '' : '<tr><td colspan="8" class="empty-row">אין תבניות עדיין</td></tr>') +
+      (list.length ? '' : '<tr><td colspan="6" class="empty-row">אין חקלאים עדיין</td></tr>') +
       '</tbody></table></div>' +
       '<div class="row add-row">' +
-      '<input type="text" id="new-postTemplates-name" placeholder="שם תבנית">' +
-      '<button class="btn-primary" data-action="add-postTemplates">הוסף תבנית</button>' +
+      '<input type="text" id="new-farmers-name" placeholder="שם">' +
+      '<button class="btn-primary" data-action="add-farmers">הוסף חקלאי</button>' +
       '</div>' +
+      '</div>';
+  }
+
+  function farmerPrefsModalHtml(farmer) {
+    var trainees = APP.state.get().pools.trainees;
+    var selected = farmer.preferredTraineeIds || [];
+    return '<h2>חניכים מועדפים עבור ' + U.escapeHtml(farmer.name) + '</h2>' +
+      '<p class="muted">חניכים אלה יקבלו עדיפות בשיבוץ האוטומטי לעמדות של חקלאי זה.</p>' +
+      '<div class="pref-checklist">' +
+      trainees.map(function (t) {
+        var checked = selected.indexOf(t.id) >= 0;
+        return '<label class="absent-item"><input type="checkbox" data-trainee-id="' + t.id + '" ' +
+          (checked ? 'checked' : '') + '>' + U.escapeHtml(t.name) + '</label>';
+      }).join('') +
+      '</div>' +
+      '<div class="row" style="margin-top:12px;">' +
+      '<button class="btn-secondary" data-action="farmer-prefs-cancel">בטל</button>' +
+      '<button class="btn-primary" data-action="farmer-prefs-save" data-farmer-id="' + farmer.id + '">שמור</button>' +
       '</div>';
   }
 
@@ -131,7 +147,7 @@ APP.pools = (function () {
     renderTrainees: renderTrainees,
     renderLeaders: renderLeaders,
     renderFarmers: renderFarmers,
-    renderTemplates: renderTemplates,
-    addTraineeModalHtml: addTraineeModalHtml
+    addTraineeModalHtml: addTraineeModalHtml,
+    farmerPrefsModalHtml: farmerPrefsModalHtml
   };
 })();

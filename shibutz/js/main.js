@@ -46,7 +46,6 @@
     if (key === 'trainees') APP.pools.renderTrainees();
     if (key === 'leaders') APP.pools.renderLeaders();
     if (key === 'farmers') APP.pools.renderFarmers();
-    if (key === 'postTemplates') APP.pools.renderTemplates();
   }
 
   function buildTaskActions() {
@@ -99,6 +98,17 @@
     };
   }
 
+  function wireFarmerPrefs() {
+    var el = document.getElementById('tab-farmers');
+    el.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action="edit-farmer-prefs"]');
+      if (!btn) return;
+      var farmer = APP.state.findById(APP.state.get().pools.farmers, btn.dataset.farmerId);
+      if (!farmer) return;
+      APP.modal.open(APP.pools.farmerPrefsModalHtml(farmer), { onDismiss: function () { APP.modal.close(); } });
+    });
+  }
+
   function wireModal() {
     var overlay = document.getElementById('modal-overlay');
     overlay.addEventListener('click', function (e) {
@@ -134,16 +144,15 @@
       if (e.target.closest('[data-action="stepper-commit"]')) {
         APP.task.readStep3FromDom();
         if (APP.task.commitStepper() !== false) {
+          var task = APP.state.getCurrentTask();
+          if (task) {
+            task.assignment = APP.assign.runAutoAssign(task, APP.state.get().pools);
+            task.updatedAt = Date.now();
+            APP.state.save();
+          }
           APP.modal.close();
           APP.render.renderTaskTab();
         }
-        return;
-      }
-      // Template selection in stepper
-      if (e.target.id === 'stepper-template-select') {
-        APP.task.readStep1FromDom();
-        if (e.target.value) APP.task.applyTemplate(e.target.value);
-        APP.modal.setContent(APP.render.postStepperHtml());
         return;
       }
       // Trainee modal actions
@@ -167,6 +176,23 @@
       }
       if (e.target.closest('[data-action="task-details-close"]')) {
         APP.modal.close();
+        return;
+      }
+      if (e.target.closest('[data-action="farmer-prefs-cancel"]')) {
+        APP.modal.close();
+        return;
+      }
+      if (e.target.closest('[data-action="farmer-prefs-save"]')) {
+        var saveBtn = e.target.closest('[data-action="farmer-prefs-save"]');
+        var farmer = APP.state.findById(APP.state.get().pools.farmers, saveBtn.dataset.farmerId);
+        if (farmer) {
+          farmer.preferredTraineeIds = APP.util.qsa('#modal-box input[type="checkbox"][data-trainee-id]')
+            .filter(function (cb) { return cb.checked; })
+            .map(function (cb) { return cb.dataset.traineeId; });
+          APP.state.save();
+        }
+        APP.modal.close();
+        APP.pools.renderFarmers();
         return;
       }
     });
@@ -196,6 +222,16 @@
         var cell = APP.state.resolveCell(task, e.target.dataset.cellInput);
         if (cell) { cell.set(APP.state.textVal(e.target.value)); APP.state.save(); }
       }
+    });
+  }
+
+  function wirePostRequirementsTab() {
+    var el = document.getElementById('tab-post-requirements');
+    el.addEventListener('click', function (e) {
+      var actionEl = e.target.closest('[data-action]');
+      if (!actionEl) return;
+      var fn = taskActions[actionEl.dataset.action];
+      if (fn) fn(actionEl, e);
     });
   }
 
@@ -265,8 +301,9 @@
       if (!tr) return;
       var item = APP.state.findById(APP.state.get().pools[poolKey], tr.dataset.id);
       if (!item) return;
-      if (e.target.dataset.field === 'name') item.name = e.target.value;
-      if (e.target.dataset.field === 'active') item.active = e.target.checked;
+      var f = e.target.dataset.field;
+      if (f === 'active') item.active = e.target.checked;
+      else if (f) item[f] = e.target.value;
       APP.state.save();
     });
     el.addEventListener('click', function (e) {
@@ -287,56 +324,6 @@
         d.pools[poolKey] = d.pools[poolKey].filter(function (x) { return x.id !== tr.dataset.id; });
         APP.state.save();
         rerenderPool(poolKey);
-      }
-    });
-  }
-
-  function wireTemplates() {
-    var el = document.getElementById('tab-templates');
-    el.addEventListener('change', function (e) {
-      var tr = e.target.closest('tr[data-id]');
-      if (!tr) return;
-      var tpl = APP.state.findById(APP.state.get().pools.postTemplates, tr.dataset.id);
-      if (!tpl) return;
-      var f = e.target.dataset.field;
-      var r = tpl.defaultRequirements;
-      if (f === 'name') tpl.name = e.target.value;
-      else if (f === 'active') tpl.active = e.target.checked;
-      else if (f === 'strength') r.strength = parseInt(e.target.value, 10);
-      else if (f === 'dexterity') r.dexterity = parseInt(e.target.value, 10);
-      else if (f === 'resp-level') r.responsibilityMinCount.level = parseInt(e.target.value, 10);
-      else if (f === 'resp-count') r.responsibilityMinCount.count = parseInt(e.target.value, 10) || 0;
-      else if (f === 'lead-level') r.leadershipMinCount.level = parseInt(e.target.value, 10);
-      else if (f === 'lead-count') r.leadershipMinCount.count = parseInt(e.target.value, 10) || 0;
-      else if (f === 'workerCount') tpl.defaultWorkerCount = parseInt(e.target.value, 10) || 1;
-      APP.state.save();
-    });
-    el.addEventListener('click', function (e) {
-      if (e.target.closest('[data-action="add-postTemplates"]')) {
-        var inp = document.getElementById('new-postTemplates-name');
-        var name = inp.value.trim();
-        if (!name) return;
-        APP.state.addPostTemplate({
-          name: name,
-          defaultRequirements: {
-            strength: 4, dexterity: 4,
-            responsibilityMinCount: { level: 5, count: 1 },
-            leadershipMinCount: { level: 5, count: 1 }
-          },
-          defaultWorkerCount: 3
-        });
-        inp.value = '';
-        APP.pools.renderTemplates();
-        return;
-      }
-      var delBtn = e.target.closest('[data-action="delete-postTemplates"]');
-      if (delBtn) {
-        var tr = delBtn.closest('tr[data-id]');
-        if (!confirm('למחוק לצמיתות?')) return;
-        var d = APP.state.get();
-        d.pools.postTemplates = d.pools.postTemplates.filter(function (x) { return x.id !== tr.dataset.id; });
-        APP.state.save();
-        APP.pools.renderTemplates();
       }
     });
   }
@@ -396,11 +383,11 @@
         btn.setAttribute('aria-selected', 'true');
         document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
         if (btn.dataset.tab === 'task') APP.render.renderTaskTab();
+        if (btn.dataset.tab === 'post-requirements') APP.render.renderPostRequirementsTab();
         if (btn.dataset.tab === 'history') APP.history.render();
         if (btn.dataset.tab === 'trainees') APP.pools.renderTrainees();
         if (btn.dataset.tab === 'leaders') APP.pools.renderLeaders();
         if (btn.dataset.tab === 'farmers') APP.pools.renderFarmers();
-        if (btn.dataset.tab === 'templates') APP.pools.renderTemplates();
         if (btn.dataset.tab === 'settings') renderSettings();
       });
     });
@@ -430,19 +417,23 @@
       document.getElementById('login-password').focus();
     }
 
+    var appShown = false;
     function showApp() {
       loginScreen.hidden = true;
       appShell.hidden = false;
+      if (appShown) return;
+      appShown = true;
       APP.render.renderTaskTab();
       APP.history.render();
       APP.pools.render();
       renderSettings();
       wireTaskTab();
+      wirePostRequirementsTab();
       wireHistory();
       wireTrainees();
       wireSimplePool('tab-leaders', 'leaders', APP.state.addLeader);
       wireSimplePool('tab-farmers', 'farmers', APP.state.addFarmer);
-      wireTemplates();
+      wireFarmerPrefs();
       wireSettings();
       wireModal();
       wireTabs();

@@ -26,6 +26,11 @@ APP.storage = (function () {
     data.pools.trainees = data.pools.trainees || [];
     data.pools.leaders = data.pools.leaders || [];
     data.pools.farmers = data.pools.farmers || [];
+    data.pools.farmers.forEach(function (f) {
+      if (typeof f.phone !== 'string') f.phone = '';
+      if (typeof f.location !== 'string') f.location = '';
+      if (!Array.isArray(f.preferredTraineeIds)) f.preferredTraineeIds = [];
+    });
     data.pools.postTemplates = data.pools.postTemplates || [];
     data.tasks = data.tasks || [];
     if (typeof data.currentTaskId === 'undefined') data.currentTaskId = null;

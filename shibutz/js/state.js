@@ -65,7 +65,7 @@ APP.state = (function () {
     return l;
   }
   function addFarmer(name) {
-    var f = { id: APP.storage.uid('f'), name: name, active: true };
+    var f = { id: APP.storage.uid('f'), name: name, active: true, phone: '', location: '', preferredTraineeIds: [] };
     data.pools.farmers.push(f);
     save();
     return f;

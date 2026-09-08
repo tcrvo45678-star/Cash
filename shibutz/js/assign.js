@@ -42,6 +42,21 @@ APP.assign = (function () {
       return !leadersUsedAsPrimary[l.id];
     });
 
+    var postById = {};
+    task.posts.forEach(function (p) { postById[p.id] = p; });
+
+    var farmersById = {};
+    (pools.farmers || []).forEach(function (f) { farmersById[f.id] = f; });
+    var preferredTraineeIdsByPost = {};
+    task.posts.forEach(function (p) {
+      var farmer = farmersById[p.farmerId];
+      preferredTraineeIdsByPost[p.id] = (farmer && farmer.preferredTraineeIds) || [];
+    });
+    function isPreferredFor(traineeId, postId) {
+      return preferredTraineeIdsByPost[postId].indexOf(traineeId) >= 0;
+    }
+    var PREFERENCE_BONUS = 0.5;
+
     // build slots, grouped by post
     var slotsByPost = {};
     task.posts.forEach(function (post) {
@@ -105,7 +120,11 @@ APP.assign = (function () {
         }
         continue;
       }
-      candidates.sort(function (a, b) { return b.trainee.ratings[best.trait] - a.trainee.ratings[best.trait]; });
+      candidates.sort(function (a, b) {
+        var diff = b.trainee.ratings[best.trait] - a.trainee.ratings[best.trait];
+        if (diff !== 0) return diff;
+        return (isPreferredFor(b.id, best.post.id) ? 1 : 0) - (isPreferredFor(a.id, best.post.id) ? 1 : 0);
+      });
       var chosen = candidates[0];
       var slot = openSlotsFor(best.post.id)[0];
       slot.assigned = chosen;
@@ -113,21 +132,20 @@ APP.assign = (function () {
     }
 
     // ---- Step 2: continuous traits (strength/dexterity), global-minimum-first greedy ----
-    function closenessCost(trainee, requirements) {
-      return Math.abs(trainee.ratings.strength - requirements.strength) +
+    function closenessCost(trainee, requirements, isPreferred) {
+      var cost = Math.abs(trainee.ratings.strength - requirements.strength) +
         Math.abs(trainee.ratings.dexterity - requirements.dexterity);
+      return isPreferred ? cost - PREFERENCE_BONUS : cost;
     }
     var allSlots = [];
     task.posts.forEach(function (post) { slotsByPost[post.id].forEach(function (s) { allSlots.push(s); }); });
-    var postById = {};
-    task.posts.forEach(function (p) { postById[p.id] = p; });
 
     var openSlots = allSlots.filter(function (s) { return !s.assigned; });
     while (remaining.length && openSlots.length) {
       var bestPair = null;
       remaining.forEach(function (c) {
         openSlots.forEach(function (s) {
-          var cost = closenessCost(c.trainee, postById[s.postId].requirements);
+          var cost = closenessCost(c.trainee, postById[s.postId].requirements, isPreferredFor(c.id, s.postId));
           if (!bestPair || cost < bestPair.cost) bestPair = { candidate: c, slot: s, cost: cost };
         });
       });

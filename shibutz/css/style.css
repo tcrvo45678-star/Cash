@@ -109,12 +109,20 @@ button {
 .req-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
 .req-grid label { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-1); color: var(--muted); }
 
+.post-req-list { display: flex; flex-direction: column; gap: 14px; }
+.post-req-card { border: 1px solid var(--divider); border-radius: 10px; padding: 14px 16px; }
+.post-req-card h3 { color: var(--bottle); margin-bottom: 8px; }
+.post-req-dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px 16px; }
+.post-req-dl dt { font-size: var(--fs-1); color: var(--muted); }
+.post-req-dl dd { font-size: var(--fs-2); }
+
 .post-sub { font-size: var(--fs-1); color: var(--muted); text-align: right; padding: 4px 6px; font-weight: 400; }
 .post-sub > div { margin-bottom: 2px; }
 .post-actions { display: flex; gap: 4px; margin-top: 4px; }
 
 .absent-list { display: flex; flex-wrap: wrap; gap: 10px; }
 .absent-item { display: flex; align-items: center; gap: 6px; background: var(--icon-bg); padding: 6px 10px; border-radius: 20px; font-size: var(--fs-2); }
+.pref-checklist { display: flex; flex-wrap: wrap; gap: 8px; max-height: 300px; overflow-y: auto; }
 
 .guests-row { display: flex; flex-direction: column; gap: 8px; }
 .guests-list { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -182,6 +190,7 @@ tr.inactive-row { opacity: 0.5; }
   min-height: 100vh; display: flex; align-items: center; justify-content: center;
   background: var(--bottle); padding: 20px;
 }
+.login-screen[hidden] { display: none; }
 .login-box {
   background: white; border-radius: 14px; padding: 30px; max-width: 360px; width: 100%;
   display: flex; flex-direction: column; gap: 10px; text-align: center;

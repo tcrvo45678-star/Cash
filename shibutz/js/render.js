@@ -59,18 +59,10 @@ APP.render = (function () {
       '</div>';
   }
 
-  function postMetaLine(task, post) {
-    var farmer = APP.state.findById(APP.state.get().pools.farmers, post.farmerId);
-    var r = post.requirements;
-    return '<div class="post-sub">' +
-      '<div>חקלאי: ' + U.escapeHtml(farmer ? farmer.name : '-') + '</div>' +
-      '<div>חוזק: ' + r.strength + ' | זריזות: ' + r.dexterity + '</div>' +
-      '<div>אחראיות: ≥' + r.responsibilityMinCount.level + ' x' + r.responsibilityMinCount.count + '</div>' +
-      '<div>הנהגה: ≥' + r.leadershipMinCount.level + ' x' + r.leadershipMinCount.count + '</div>' +
-      '<div class="post-actions no-print">' +
+  function postActionsLine(post) {
+    return '<div class="post-actions no-print">' +
       '<button class="btn-tiny" data-action="edit-post" data-post-id="' + post.id + '">ערוך</button>' +
       '<button class="btn-tiny btn-danger" data-action="delete-post" data-post-id="' + post.id + '">מחק</button>' +
-      '</div>' +
       '</div>';
   }
 
@@ -83,7 +75,7 @@ APP.render = (function () {
       : 0;
 
     var head = '<tr>' + task.posts.map(function (post) {
-      return '<th>' + postHeaderHtml(task, post) + postMetaLine(task, post) + '</th>';
+      return '<th>' + postHeaderHtml(task, post) + postActionsLine(post) + '</th>';
     }).join('') + '</tr>';
 
     var bodyRows = '';
@@ -147,7 +139,6 @@ APP.render = (function () {
     if (!s) return "";
     var farmers = APP.state.get().pools.farmers;
     var leaders = APP.state.activeOnly(APP.state.get().pools.leaders);
-    var templates = APP.state.get().pools.postTemplates;
     var body = "";
 
     if (s.step === 1) {
@@ -160,15 +151,6 @@ APP.render = (function () {
         "</select>" +
         "<div class=\"or-sep\">או הוסף חקלאי חדש:</div>" +
         "<input type=\"text\" id=\"stepper-farmer-new\" placeholder=\"שם חקלאי חדש\" value=\"" + U.escapeHtml(s.newFarmerName) + "\">" +
-        (templates.length ? (
-          "<div class=\"or-sep\">תבנית עמדה (אופציונלי - ימלא ברירות מחדל בשלב 3):</div>" +
-          "<select id=\"stepper-template-select\">" +
-          "<option value=\"\">-- ללא תבנית --</option>" +
-          templates.map(function (tp) {
-            return "<option value=\"" + tp.id + "\"" + (s.templateId === tp.id ? " selected" : "") + ">" + U.escapeHtml(tp.name) + "</option>";
-          }).join("") +
-          "</select>"
-        ) : "") +
         "<div class=\"row\">" +
         "<button class=\"btn-secondary\" data-action=\"stepper-cancel\">בטל</button>" +
         "<button class=\"btn-primary\" data-action=\"stepper-next-1\">הבא</button>" +
@@ -253,5 +235,45 @@ APP.render = (function () {
       '</div>';
   }
 
-  return { renderTaskTab: renderTaskTab, postStepperHtml: postStepperHtml, taskDetailsModalHtml: taskDetailsModalHtml };
+  function postRequirementCardHtml(task, post) {
+    var farmer = APP.state.findById(APP.state.get().pools.farmers, post.farmerId);
+    var r = post.requirements;
+    var leaderName = APP.state.cellDisplay(post.leader, task);
+    return '<div class="post-req-card">' +
+      '<h3>' + U.escapeHtml(leaderName || '(ריק)') + '</h3>' +
+      '<dl class="post-req-dl">' +
+      '<div><dt>חקלאי</dt><dd>' + U.escapeHtml(farmer ? farmer.name : '-') + '</dd></div>' +
+      '<div><dt>טלפון</dt><dd>' + U.escapeHtml((farmer && farmer.phone) || '-') + '</dd></div>' +
+      '<div><dt>מיקום</dt><dd>' + U.escapeHtml((farmer && farmer.location) || '-') + '</dd></div>' +
+      '<div><dt>מספר עובדים</dt><dd>' + post.workerCount + '</dd></div>' +
+      '<div><dt>חוזק</dt><dd>' + r.strength + '</dd></div>' +
+      '<div><dt>זריזות</dt><dd>' + r.dexterity + '</dd></div>' +
+      '<div><dt>אחראיות</dt><dd>≥' + r.responsibilityMinCount.level + ' x' + r.responsibilityMinCount.count + '</dd></div>' +
+      '<div><dt>הנהגה</dt><dd>≥' + r.leadershipMinCount.level + ' x' + r.leadershipMinCount.count + '</dd></div>' +
+      '</dl></div>';
+  }
+
+  function renderPostRequirementsTab() {
+    var el = document.getElementById('tab-post-requirements');
+    if (!el) return;
+    var task = APP.state.getCurrentTask();
+    if (!task) { el.innerHTML = '<div class="card"><p class="muted">אין משימה פתוחה.</p></div>'; return; }
+    if (!task.posts.length) { el.innerHTML = '<div class="card"><p class="muted">אין עדיין עמדות עבודה למשימה זו.</p></div>'; return; }
+    el.innerHTML = '<div class="card">' +
+      '<div class="task-top-bar no-print"><h2>דרישות מוקדי עבודה - ' + task.date + '</h2>' +
+      '<div class="row">' +
+      '<button class="btn-secondary" data-action="preview-open">תצוגה מקדימה</button>' +
+      '<button class="btn-secondary" data-action="print">הדפס</button>' +
+      '</div></div>' +
+      '<div class="post-req-list">' +
+      task.posts.map(function (post) { return postRequirementCardHtml(task, post); }).join('') +
+      '</div></div>';
+  }
+
+  return {
+    renderTaskTab: renderTaskTab,
+    postStepperHtml: postStepperHtml,
+    taskDetailsModalHtml: taskDetailsModalHtml,
+    renderPostRequirementsTab: renderPostRequirementsTab
+  };
 })();
