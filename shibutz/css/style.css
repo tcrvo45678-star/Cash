@@ -7,7 +7,7 @@
   --good: #2F7D6E;
   --blue: #5C7A94;
   --ink: #1F332F;
-  --muted: #8B9490;
+  --muted: #737C78;
   --grid: #D8E3DF;
   --icon-bg: #E1F0EC;
   --divider: #E7E3D8;
@@ -149,6 +149,9 @@ button {
 }
 .cell.cell-dragging { opacity: 0.35; }
 .cell.drop-target { outline: 2px dashed var(--gold); background: #FFF6E5; }
+.cell.cell-armed { outline: 2px solid var(--gold); }
+.cell.cell-picked { outline: 2px solid var(--bottle); background: var(--icon-bg); }
+.cell[tabindex]:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
 .meta-table .cell { cursor: default; }
 .meta-table .cell input.cell-input { touch-action: manipulation; user-select: text; cursor: text; }
 .cell-text { display: block; }

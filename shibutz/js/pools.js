@@ -22,12 +22,12 @@ APP.pools = (function () {
       '<tbody>' +
       list.map(function (t) {
         return '<tr data-id="' + t.id + '">' +
-          '<td><input class="pool-input" data-field="name" value="' + U.escapeHtml(t.name) + '"></td>' +
-          '<td><select data-field="strength">' + U.ratingOptions(t.ratings.strength) + '</select></td>' +
-          '<td><select data-field="dexterity">' + U.ratingOptions(t.ratings.dexterity) + '</select></td>' +
-          '<td><select data-field="responsibility">' + U.ratingOptions(t.ratings.responsibility) + '</select></td>' +
-          '<td><select data-field="leadership">' + U.ratingOptions(t.ratings.leadership) + '</select></td>' +
-          '<td><input type="checkbox" data-field="active" ' + (t.active !== false ? 'checked' : '') + '></td>' +
+          '<td><input class="pool-input" data-field="name" aria-label="שם" value="' + U.escapeHtml(t.name) + '"></td>' +
+          '<td><select data-field="strength" aria-label="חוזק">' + U.ratingOptions(t.ratings.strength) + '</select></td>' +
+          '<td><select data-field="dexterity" aria-label="זריזות">' + U.ratingOptions(t.ratings.dexterity) + '</select></td>' +
+          '<td><select data-field="responsibility" aria-label="אחראיות">' + U.ratingOptions(t.ratings.responsibility) + '</select></td>' +
+          '<td><select data-field="leadership" aria-label="הנהגה">' + U.ratingOptions(t.ratings.leadership) + '</select></td>' +
+          '<td><input type="checkbox" data-field="active" aria-label="פעיל" ' + (t.active !== false ? 'checked' : '') + '></td>' +
           '<td><button class="btn-tiny btn-danger" data-action="delete-trainee">מחק</button></td>' +
           '</tr>';
       }).join('') +
@@ -50,8 +50,8 @@ APP.pools = (function () {
       '<tbody>' +
       list.map(function (x) {
         return '<tr data-id="' + x.id + '">' +
-          '<td><input class="pool-input" data-field="name" value="' + U.escapeHtml(x.name) + '"></td>' +
-          '<td><input type="checkbox" data-field="active" ' + (x.active !== false ? 'checked' : '') + '></td>' +
+          '<td><input class="pool-input" data-field="name" aria-label="שם" value="' + U.escapeHtml(x.name) + '"></td>' +
+          '<td><input type="checkbox" data-field="active" aria-label="פעיל" ' + (x.active !== false ? 'checked' : '') + '></td>' +
           '<td><button class="btn-tiny btn-danger" data-action="delete-' + poolKey + '">מחק</button></td>' +
           '</tr>';
       }).join('') +
@@ -80,15 +80,15 @@ APP.pools = (function () {
       list.map(function (tp) {
         var r = tp.defaultRequirements;
         return '<tr data-id="' + tp.id + '">' +
-          '<td><input class="pool-input" data-field="name" value="' + U.escapeHtml(tp.name) + '"></td>' +
-          '<td><select data-field="strength">' + U.ratingOptions(r.strength) + '</select></td>' +
-          '<td><select data-field="dexterity">' + U.ratingOptions(r.dexterity) + '</select></td>' +
-          '<td><select data-field="resp-level">' + U.ratingOptions(r.responsibilityMinCount.level) + '</select> x ' +
-          '<input type="number" min="0" class="num-mini" data-field="resp-count" value="' + r.responsibilityMinCount.count + '"></td>' +
-          '<td><select data-field="lead-level">' + U.ratingOptions(r.leadershipMinCount.level) + '</select> x ' +
-          '<input type="number" min="0" class="num-mini" data-field="lead-count" value="' + r.leadershipMinCount.count + '"></td>' +
-          '<td><input type="number" min="1" class="num-mini" data-field="workerCount" value="' + tp.defaultWorkerCount + '"></td>' +
-          '<td><input type="checkbox" data-field="active" ' + (tp.active !== false ? 'checked' : '') + '></td>' +
+          '<td><input class="pool-input" data-field="name" aria-label="שם" value="' + U.escapeHtml(tp.name) + '"></td>' +
+          '<td><select data-field="strength" aria-label="חוזק">' + U.ratingOptions(r.strength) + '</select></td>' +
+          '<td><select data-field="dexterity" aria-label="זריזות">' + U.ratingOptions(r.dexterity) + '</select></td>' +
+          '<td><select data-field="resp-level" aria-label="אחראיות רמה">' + U.ratingOptions(r.responsibilityMinCount.level) + '</select> x ' +
+          '<input type="number" min="0" class="num-mini" data-field="resp-count" aria-label="אחראיות כמות" value="' + r.responsibilityMinCount.count + '"></td>' +
+          '<td><select data-field="lead-level" aria-label="הנהגה רמה">' + U.ratingOptions(r.leadershipMinCount.level) + '</select> x ' +
+          '<input type="number" min="0" class="num-mini" data-field="lead-count" aria-label="הנהגה כמות" value="' + r.leadershipMinCount.count + '"></td>' +
+          '<td><input type="number" min="1" class="num-mini" data-field="workerCount" aria-label="מספר עובדים" value="' + tp.defaultWorkerCount + '"></td>' +
+          '<td><input type="checkbox" data-field="active" aria-label="פעיל" ' + (tp.active !== false ? 'checked' : '') + '></td>' +
           '<td><button class="btn-tiny btn-danger" data-action="delete-postTemplates">מחק</button></td>' +
           '</tr>';
       }).join('') +

@@ -42,7 +42,7 @@ APP.render = (function () {
       var cellId = 'meta:' + m.key;
       var val = m.value;
       var inner = (val.t === 'text')
-        ? '<input class="cell-input" data-cell-input="' + cellId + '" value="' + U.escapeHtml(val.v) + '">'
+        ? '<input class="cell-input" data-cell-input="' + cellId + '" aria-label="' + U.escapeHtml(m.label) + '" value="' + U.escapeHtml(val.v) + '">'
         : '<span class="cell-text">' + U.escapeHtml(APP.state.cellDisplay(val, task)) + '</span>';
       return '<tr>' +
         '<th>' + U.escapeHtml(m.label) + '</th>' +
@@ -54,7 +54,7 @@ APP.render = (function () {
   function postHeaderHtml(task, post) {
     var cellId = 'post:' + post.id + ':header';
     var name = APP.state.cellDisplay(post.leader, task);
-    return '<div class="cell post-header" data-cell-id="' + cellId + '">' +
+    return '<div class="cell post-header" tabindex="0" data-cell-id="' + cellId + '">' +
       '<div class="post-leader-name">' + U.escapeHtml(name || '(ריק)') + '</div>' +
       '</div>';
   }
@@ -95,7 +95,7 @@ APP.render = (function () {
         var val = (pa && pa.workerIds[i]) ? pa.workerIds[i] : APP.state.emptyVal();
         var text = APP.state.cellDisplay(val, task);
         var kindClass = val.t === 'ref' ? (' kind-' + val.rt) : '';
-        return '<td class="grid-cell cell' + kindClass + '" data-cell-id="' + cellId + '">' +
+        return '<td class="grid-cell cell' + kindClass + '" tabindex="0" data-cell-id="' + cellId + '">' +
           '<span class="cell-text">' + U.escapeHtml(text) + '</span>' +
           '</td>';
       }).join('') + '</tr>';
@@ -110,7 +110,7 @@ APP.render = (function () {
   function spareHtml(task) {
     if (!task.assignment || !task.assignment.spare.length) return '';
     var items = task.assignment.spare.map(function (v, i) {
-      return '<div class="cell spare-chip" data-cell-id="spare:' + i + '">' +
+      return '<div class="cell spare-chip" tabindex="0" data-cell-id="spare:' + i + '">' +
         U.escapeHtml(APP.state.cellDisplay(v, task)) + '</div>';
     }).join('');
     return '<div class="spare-panel"><h3>ספייר (עודפים)</h3><div class="spare-list">' + items + '</div></div>';

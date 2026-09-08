@@ -8,34 +8,81 @@ window.APP = window.APP || {};
 // swapping the underlying data and re-rendering.
 APP.dragswap = (function () {
   var THRESHOLD = 9;
+  var HOLD_MS = 450;
 
   function attach(container, onSwap) {
     var drag = null;
     var ghost = document.getElementById('drag-ghost');
+    var pickedEl = null;
+    var pickedCellId = null;
+
+    function clearPicked() {
+      if (pickedEl) pickedEl.classList.remove('cell-picked');
+      pickedEl = null;
+      pickedCellId = null;
+    }
+
+    // ---- keyboard path: focus a cell, Enter/Space to pick it up, Tab to
+    // another cell, Enter/Space again to swap. Escape cancels. ----
+    container.addEventListener('keydown', function (e) {
+      var cellEl = e.target.closest('.cell');
+      if (!cellEl) return;
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        var cellId = cellEl.dataset.cellId;
+        if (!pickedEl) {
+          pickedEl = cellEl;
+          pickedCellId = cellId;
+          cellEl.classList.add('cell-picked');
+        } else if (pickedEl === cellEl) {
+          clearPicked();
+        } else {
+          var sourceCellId = pickedCellId;
+          clearPicked();
+          onSwap(sourceCellId, cellId);
+        }
+      } else if (e.key === 'Escape' && pickedEl) {
+        clearPicked();
+      }
+    });
 
     container.addEventListener('pointerdown', function (e) {
       var cellEl = e.target.closest('.cell');
       if (!cellEl) return;
-      drag = {
+      var pending = {
         pointerId: e.pointerId,
         startX: e.clientX,
         startY: e.clientY,
         sourceEl: cellEl,
         sourceCellId: cellEl.dataset.cellId,
+        armed: false,
         dragging: false,
         targetEl: null,
-        targetCellId: null
+        targetCellId: null,
+        timer: null
       };
+      pending.timer = setTimeout(function () {
+        if (drag !== pending) return;
+        pending.armed = true;
+        pending.sourceEl.classList.add('cell-armed');
+      }, HOLD_MS);
+      drag = pending;
     });
 
     container.addEventListener('pointermove', function (e) {
       if (!drag || drag.pointerId !== e.pointerId) return;
       var dx = e.clientX - drag.startX;
       var dy = e.clientY - drag.startY;
-      if (!drag.dragging) {
-        if (Math.abs(dx) < THRESHOLD && Math.abs(dy) < THRESHOLD) return;
-        startDragging(e);
+      if (!drag.armed) {
+        // Moved before the hold completed - this is a scroll/tap, not a
+        // drag intent, so cancel the pending hold entirely.
+        if (Math.abs(dx) >= THRESHOLD || Math.abs(dy) >= THRESHOLD) {
+          clearTimeout(drag.timer);
+          drag = null;
+        }
+        return;
       }
+      if (!drag.dragging) startDragging(e);
       moveGhost(e.clientX, e.clientY);
       updateDropTarget(e.clientX, e.clientY);
       e.preventDefault();
@@ -81,12 +128,13 @@ APP.dragswap = (function () {
 
     function cleanup() {
       ghost.hidden = true;
-      if (drag.sourceEl) drag.sourceEl.classList.remove('cell-dragging');
+      if (drag.sourceEl) drag.sourceEl.classList.remove('cell-dragging', 'cell-armed');
       if (drag.targetEl) drag.targetEl.classList.remove('drop-target');
     }
 
     function finish(e) {
       if (!drag || drag.pointerId !== e.pointerId) return;
+      clearTimeout(drag.timer);
       if (drag.dragging) {
         var targetCellId = drag.targetCellId;
         cleanup();
@@ -94,6 +142,8 @@ APP.dragswap = (function () {
         if (targetCellId && targetCellId !== drag.sourceCellId) {
           onSwap(drag.sourceCellId, targetCellId);
         }
+      } else if (drag.sourceEl) {
+        drag.sourceEl.classList.remove('cell-armed');
       }
       drag = null;
     }

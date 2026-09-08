@@ -5,9 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>שיבוץ עובדים חקלאיים</title>
 <meta name="theme-color" content="#0E4B44">
+<meta name="description" content="כלי פנימי לניהול שיבוץ יומי לעובדים ומתנדבים חקלאיים">
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌾</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=3">
-<link rel="stylesheet" id="print-stylesheet" href="css/print.css?v=3" media="print">
+<link rel="stylesheet" href="css/style.css?v=4">
+<link rel="stylesheet" id="print-stylesheet" href="css/print.css?v=4" media="print">
 </head>
 <body>
 
@@ -16,12 +21,12 @@
     <h1>שיבוץ עובדים חקלאיים</h1>
     <p id="login-mode-label" class="muted"></p>
     <div class="password-field">
-      <input id="login-password" type="password" placeholder="סיסמה" autocomplete="off">
-      <button type="button" class="password-toggle" data-toggle-for="login-password">הצג</button>
+      <input id="login-password" type="password" placeholder="סיסמה" aria-label="סיסמה" autocomplete="off">
+      <button type="button" class="password-toggle" data-toggle-for="login-password" aria-pressed="false">הצג</button>
     </div>
     <div class="password-field" id="login-password-confirm-field" hidden>
-      <input id="login-password-confirm" type="password" placeholder="אימות סיסמה" autocomplete="off">
-      <button type="button" class="password-toggle" data-toggle-for="login-password-confirm">הצג</button>
+      <input id="login-password-confirm" type="password" placeholder="אימות סיסמה" aria-label="אימות סיסמה" autocomplete="off">
+      <button type="button" class="password-toggle" data-toggle-for="login-password-confirm" aria-pressed="false">הצג</button>
     </div>
     <button id="login-submit" class="btn-primary">כניסה</button>
     <p id="login-error" class="error-text" hidden></p>
@@ -35,23 +40,23 @@
     <p>ניהול שיבוץ יומי למוקדי עבודה חקלאיים</p>
   </div>
 
-  <div class="tabs no-print">
-    <button class="tab-btn active" data-tab="task">משימה יומית</button>
-    <button class="tab-btn" data-tab="history">היסטוריה</button>
-    <button class="tab-btn" data-tab="trainees">חניכים</button>
-    <button class="tab-btn" data-tab="leaders">אנשי צוות</button>
-    <button class="tab-btn" data-tab="farmers">חקלאים</button>
-    <button class="tab-btn" data-tab="templates">תבניות עמדות</button>
-    <button class="tab-btn" data-tab="settings">הגדרות</button>
+  <div class="tabs no-print" role="tablist" aria-label="לשוניות ניהול">
+    <button class="tab-btn active" data-tab="task" id="tabbtn-task" role="tab" aria-selected="true" aria-controls="tab-task">משימה יומית</button>
+    <button class="tab-btn" data-tab="history" id="tabbtn-history" role="tab" aria-selected="false" aria-controls="tab-history">היסטוריה</button>
+    <button class="tab-btn" data-tab="trainees" id="tabbtn-trainees" role="tab" aria-selected="false" aria-controls="tab-trainees">חניכים</button>
+    <button class="tab-btn" data-tab="leaders" id="tabbtn-leaders" role="tab" aria-selected="false" aria-controls="tab-leaders">אנשי צוות</button>
+    <button class="tab-btn" data-tab="farmers" id="tabbtn-farmers" role="tab" aria-selected="false" aria-controls="tab-farmers">חקלאים</button>
+    <button class="tab-btn" data-tab="templates" id="tabbtn-templates" role="tab" aria-selected="false" aria-controls="tab-templates">תבניות עמדות</button>
+    <button class="tab-btn" data-tab="settings" id="tabbtn-settings" role="tab" aria-selected="false" aria-controls="tab-settings">הגדרות</button>
   </div>
 
-  <div id="tab-task" class="tab-content active"></div>
-  <div id="tab-history" class="tab-content"></div>
-  <div id="tab-trainees" class="tab-content"></div>
-  <div id="tab-leaders" class="tab-content"></div>
-  <div id="tab-farmers" class="tab-content"></div>
-  <div id="tab-templates" class="tab-content"></div>
-  <div id="tab-settings" class="tab-content"></div>
+  <div id="tab-task" class="tab-content active" role="tabpanel" aria-labelledby="tabbtn-task"></div>
+  <div id="tab-history" class="tab-content" role="tabpanel" aria-labelledby="tabbtn-history"></div>
+  <div id="tab-trainees" class="tab-content" role="tabpanel" aria-labelledby="tabbtn-trainees"></div>
+  <div id="tab-leaders" class="tab-content" role="tabpanel" aria-labelledby="tabbtn-leaders"></div>
+  <div id="tab-farmers" class="tab-content" role="tabpanel" aria-labelledby="tabbtn-farmers"></div>
+  <div id="tab-templates" class="tab-content" role="tabpanel" aria-labelledby="tabbtn-templates"></div>
+  <div id="tab-settings" class="tab-content" role="tabpanel" aria-labelledby="tabbtn-settings"></div>
 </div>
 
 <div id="drag-ghost" class="drag-ghost" hidden></div>
@@ -65,18 +70,18 @@
   <button class="btn-secondary" data-action="preview-close">✕ סגור תצוגה מקדימה</button>
 </div>
 
-<script src="js/util.js?v=3"></script>
-<script src="js/modal.js?v=3"></script>
-<script src="js/storage.js?v=3"></script>
-<script src="js/state.js?v=3"></script>
-<script src="js/seed-data.js?v=3"></script>
-<script src="js/auth.js?v=3"></script>
-<script src="js/assign.js?v=3"></script>
-<script src="js/dragswap.js?v=3"></script>
-<script src="js/pools.js?v=3"></script>
-<script src="js/task.js?v=3"></script>
-<script src="js/render.js?v=3"></script>
-<script src="js/history.js?v=3"></script>
-<script src="js/main.js?v=3"></script>
+<script src="js/util.js?v=4"></script>
+<script src="js/modal.js?v=4"></script>
+<script src="js/storage.js?v=4"></script>
+<script src="js/state.js?v=4"></script>
+<script src="js/seed-data.js?v=4"></script>
+<script src="js/auth.js?v=4"></script>
+<script src="js/assign.js?v=4"></script>
+<script src="js/dragswap.js?v=4"></script>
+<script src="js/pools.js?v=4"></script>
+<script src="js/task.js?v=4"></script>
+<script src="js/render.js?v=4"></script>
+<script src="js/history.js?v=4"></script>
+<script src="js/main.js?v=4"></script>
 </body>
 </html>

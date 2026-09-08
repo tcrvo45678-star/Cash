@@ -25,6 +25,7 @@
       var input = document.getElementById(btn.dataset.toggleFor);
       if (input) input.type = 'password';
       btn.textContent = 'הצג';
+      btn.setAttribute('aria-pressed', 'false');
     });
   }
 
@@ -36,6 +37,7 @@
         var isHidden = input.type === 'password';
         input.type = isHidden ? 'text' : 'password';
         btn.textContent = isHidden ? 'הסתר' : 'הצג';
+        btn.setAttribute('aria-pressed', String(isHidden));
       });
     });
   }
@@ -388,9 +390,10 @@
   function wireTabs() {
     APP.util.qsa('.tab-btn').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        APP.util.qsa('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+        APP.util.qsa('.tab-btn').forEach(function (b) { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
         APP.util.qsa('.tab-content').forEach(function (c) { c.classList.remove('active'); });
         btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
         document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
         if (btn.dataset.tab === 'task') APP.render.renderTaskTab();
         if (btn.dataset.tab === 'history') APP.history.render();

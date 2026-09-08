@@ -64,7 +64,7 @@ body {
 }
 .spare-chip { border: 1px solid #999 !important; }
 
-.cell.drop-target, .cell.cell-dragging { outline: none !important; opacity: 1 !important; background: none !important; }
+.cell.drop-target, .cell.cell-dragging, .cell.cell-armed, .cell.cell-picked { outline: none !important; opacity: 1 !important; background: none !important; }
 
 @media print {
   .preview-toolbar { display: none !important; }
