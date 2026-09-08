@@ -10,6 +10,16 @@
     APP.modal.close();
   }
 
+  function enterPreview() {
+    document.getElementById('print-stylesheet').media = 'all';
+    document.getElementById('preview-toolbar').hidden = false;
+  }
+
+  function exitPreview() {
+    document.getElementById('print-stylesheet').media = 'print';
+    document.getElementById('preview-toolbar').hidden = true;
+  }
+
   function resetPasswordToggles() {
     APP.util.qsa('.password-toggle').forEach(function (btn) {
       var input = document.getElementById(btn.dataset.toggleFor);
@@ -63,6 +73,10 @@
         APP.render.renderTaskTab();
       },
       'print': function () { window.print(); },
+      'task-details-start': function () {
+        APP.modal.open(APP.render.taskDetailsModalHtml(APP.state.getCurrentTask()), { onDismiss: function () { APP.modal.close(); } });
+      },
+      'preview-open': function () { enterPreview(); },
       'add-post-start': function () { APP.task.startStepper(); openPostModal(); },
       'edit-post': function (el) {
         var task = APP.state.getCurrentTask();
@@ -149,6 +163,18 @@
         APP.modal.close();
         return;
       }
+      if (e.target.closest('[data-action="task-details-close"]')) {
+        APP.modal.close();
+        return;
+      }
+    });
+    overlay.addEventListener('input', function (e) {
+      if (e.target && e.target.dataset && e.target.dataset.cellInput) {
+        var task = APP.state.getCurrentTask();
+        if (!task) return;
+        var cell = APP.state.resolveCell(task, e.target.dataset.cellInput);
+        if (cell) { cell.set(APP.state.textVal(e.target.value)); APP.state.save(); }
+      }
     });
   }
 
@@ -169,6 +195,15 @@
         if (cell) { cell.set(APP.state.textVal(e.target.value)); APP.state.save(); }
       }
     });
+  }
+
+  function wirePreviewToolbar() {
+    var toolbar = document.getElementById('preview-toolbar');
+    toolbar.addEventListener('click', function (e) {
+      if (e.target.closest('[data-action="preview-print"]')) { window.print(); return; }
+      if (e.target.closest('[data-action="preview-close"]')) { exitPreview(); return; }
+    });
+    window.addEventListener('afterprint', exitPreview);
   }
 
   function wireHistory() {
@@ -408,6 +443,7 @@
       wireSettings();
       wireModal();
       wireTabs();
+      wirePreviewToolbar();
     }
 
     function submitLogin() {

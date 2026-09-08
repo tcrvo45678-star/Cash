@@ -214,11 +214,11 @@ APP.render = (function () {
       '<input type="date" id="new-task-date" value="' + APP.state.todayISO() + '">' +
       '<button class="btn-secondary" data-action="create-task">משימה חדשה / פתח תאריך</button>' +
       '<button class="btn-primary" data-action="auto-assign">שבץ אוטומטית</button>' +
+      '<button class="btn-secondary" data-action="task-details-start">פרטי המשימה</button>' +
+      '<button class="btn-secondary" data-action="preview-open">תצוגה מקדימה</button>' +
       '<button class="btn-secondary" data-action="print">הדפס</button>' +
       '</div>' +
       '</div>' +
-
-      '<table class="meta-table">' + metaRowsHtml(task) + '</table>' +
 
       '<div class="section no-print">' +
       '<div class="section-title-row">' +
@@ -240,9 +240,18 @@ APP.render = (function () {
       spareHtml(task) +
       '</div>' +
 
-      '<p class="drag-hint no-print">טיפ: אפשר לגרור כל תא (שם עובד, כותרת עמדה, או ערך במטא-דאטה למעלה) ולהחליף אותו עם כל תא אחר.</p>' +
+      '<p class="drag-hint no-print">טיפ: אפשר לגרור כל תא (שם עובד או כותרת עמדה) ולהחליף אותו עם כל תא אחר.</p>' +
       '</div>';
   }
 
-  return { renderTaskTab: renderTaskTab, postStepperHtml: postStepperHtml };
+  function taskDetailsModalHtml(task) {
+    return '' +
+      '<h2>פרטי המשימה</h2>' +
+      '<table class="meta-table">' + metaRowsHtml(task) + '</table>' +
+      '<div class="row" style="margin-top:12px;">' +
+      '<button class="btn-primary" data-action="task-details-close">סגור</button>' +
+      '</div>';
+  }
+
+  return { renderTaskTab: renderTaskTab, postStepperHtml: postStepperHtml, taskDetailsModalHtml: taskDetailsModalHtml };
 })();

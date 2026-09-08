@@ -197,6 +197,13 @@ tr.inactive-row { opacity: 0.5; }
 }
 .password-field .password-toggle:hover { color: var(--bottle); }
 
+/* ---- print preview toolbar ---- */
+.preview-toolbar {
+  display: flex; gap: 10px; justify-content: center;
+  position: fixed; bottom: 16px; inset-inline: 0; z-index: 300;
+}
+.preview-toolbar[hidden] { display: none; }
+
 /* ---- modal ---- */
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(15, 25, 22, 0.5);
