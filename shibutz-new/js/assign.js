@@ -5,8 +5,9 @@ window.APP = window.APP || {};
 //
 // See /root/.claude/plans (or the project README) for the full design
 // writeup. Summary:
-//   1. Candidate pool = non-absent trainees + surplus team leaders
-//      (leaders not already chosen as a post's primary leader today).
+//   1. Candidate pool = non-absent trainees + this task's ad-hoc guests
+//      + surplus team leaders (leaders not already chosen as a post's
+//      primary leader today).
 //   2. Posts are expanded into worker-slots.
 //   3. Quota traits (responsibility/leadership "at least N at level >= L")
 //      are satisfied first, in interleaved rounds across all posts at once
@@ -70,11 +71,16 @@ APP.assign = (function () {
     }
     var PREFERENCE_BONUS = 0.5;
 
-    // build slots, grouped by post
+    // build slots, grouped by post. A post with workerCount == null is
+    // "flexible" - it has no fixed requirement, so it gets an upper-bound
+    // slot count (never actually reached in practice) and the balancing
+    // algorithm below decides how many it actually needs.
+    var totalCandidates = APP.state.activeOnly(pools.trainees).length + (task.extraGuests || []).length + APP.state.activeOnly(pools.leaders).length;
     var slotsByPost = {};
     task.posts.forEach(function (post) {
       var arr = [];
-      for (var i = 0; i < post.workerCount; i++) {
+      var count = post.workerCount != null ? post.workerCount : totalCandidates;
+      for (var i = 0; i < count; i++) {
         arr.push({ postId: post.id, index: i, assigned: null });
       }
       slotsByPost[post.id] = arr;
@@ -89,7 +95,8 @@ APP.assign = (function () {
       }).length;
     }
 
-    var remaining = trainees.map(function (t) { return { id: t.id, trainee: t }; });
+    var remaining = trainees.map(function (t) { return { id: t.id, trainee: t, kind: 'trainee' }; })
+      .concat((task.extraGuests || []).map(function (g) { return { id: g.id, trainee: g, kind: 'guest' }; }));
 
     // ---- Step 1: quota traits, interleaved by urgency, gradual relaxation ----
     var quotaTraits = ['responsibility', 'leadership', 'gender-male', 'gender-female'];
@@ -118,7 +125,12 @@ APP.assign = (function () {
           var have = quotaMetCount(post.id, trait, level);
           var deficit = target - have;
           if (deficit <= 0) return;
-          var urgency = deficit / open;
+          // A flexible post's real open-slot count is an artificial upper
+          // bound (see slotsByPost above), not a meaningful scarcity signal -
+          // cap it at its own target so its urgency stays on the same scale
+          // as a fixed-size post, instead of being diluted to near-zero.
+          var effectiveOpen = post.workerCount != null ? open : Math.min(open, target);
+          var urgency = deficit / effectiveOpen;
           if (!best || urgency > best.urgency) {
             best = { post: post, trait: trait, level: level, urgency: urgency };
           }
@@ -186,14 +198,14 @@ APP.assign = (function () {
       postAssignments[post.id] = {
         workerIds: slotsByPost[post.id].map(function (s) {
           if (!s.assigned) return APP.state.emptyVal();
-          if (s.assigned.trainee) return APP.state.refVal('trainee', s.assigned.id);
+          if (s.assigned.trainee) return APP.state.refVal(s.assigned.kind || 'trainee', s.assigned.id);
           if (s.assigned.leader) return APP.state.refVal('leader', s.assigned.id);
           return APP.state.emptyVal();
         })
       };
     });
 
-    var spare = remaining.map(function (c) { return APP.state.refVal('trainee', c.id); })
+    var spare = remaining.map(function (c) { return APP.state.refVal(c.kind || 'trainee', c.id); })
       .concat(leaderQueue.map(function (l) { return APP.state.refVal('leader', l.id); }));
 
     recomputePhoneCarriers(task, pools, postAssignments);

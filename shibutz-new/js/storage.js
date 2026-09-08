@@ -33,6 +33,7 @@ APP.storage = (function () {
     data.pools.farmers.forEach(function (f) {
       if (typeof f.phone !== 'string') f.phone = '';
       if (typeof f.location !== 'string') f.location = '';
+      if (typeof f.jobType !== 'string') f.jobType = '';
       if (!Array.isArray(f.preferredTraineeIds)) f.preferredTraineeIds = [];
     });
     data.pools.postTemplates = data.pools.postTemplates || [];

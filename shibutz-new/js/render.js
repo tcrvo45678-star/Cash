@@ -56,10 +56,21 @@ APP.render = (function () {
     var cellId = 'post:' + post.id + ':header';
     var name = APP.state.cellDisplay(post.leader, task);
     var farmer = APP.state.findById(APP.state.get().pools.farmers, post.farmerId);
+    var detailsLine = [farmer && farmer.jobType, farmer && farmer.location].filter(Boolean).join(' · ');
     return '<div class="cell post-header" tabindex="0" data-cell-id="' + cellId + '">' +
       '<div class="post-farmer-name">' + U.escapeHtml(farmer ? farmer.name : '(ללא חקלאי)') + '</div>' +
+      (detailsLine ? '<div class="post-farmer-details">' + U.escapeHtml(detailsLine) + '</div>' : '') +
       '<div class="post-leader-name">' + U.escapeHtml(name || '(ריק)') + '</div>' +
+      '<div class="post-worker-count">' + workerCountBadge(task, post) + '</div>' +
       '</div>';
+  }
+
+  function workerCountBadge(task, post) {
+    var pa = task.assignment && task.assignment.postAssignments[post.id];
+    var assignedCount = pa ? pa.workerIds.filter(function (w) { return w.t === 'ref'; }).length : 0;
+    return post.workerCount != null
+      ? assignedCount + '/' + post.workerCount + ' עובדים'
+      : assignedCount + ' עובדים (גמיש)';
   }
 
   function postActionsLine(post) {
@@ -69,13 +80,41 @@ APP.render = (function () {
       '</div>';
   }
 
+  function assignedCountFor(task, post) {
+    var pa = task.assignment && task.assignment.postAssignments[post.id];
+    return pa ? pa.workerIds.filter(function (w) { return w.t === 'ref'; }).length : 0;
+  }
+
+  function taskMaxSlots(task) {
+    return task.assignment
+      ? Math.max.apply(null, task.posts.map(function (p) { return p.workerCount != null ? p.workerCount : assignedCountFor(task, p); }).concat([0]))
+      : 0;
+  }
+
+  // Shared slot-cell data for both the desktop table (gridHtml) and the
+  // mobile per-post cards (postCardsHtml) - keeps cohort/phone-badge/kind
+  // logic in one place so the two layouts never drift apart.
+  function slotCellData(task, post, i) {
+    if (post.workerCount != null && i >= post.workerCount) return null;
+    var cellId = 'post:' + post.id + ':slot:' + i;
+    var pa = task.assignment.postAssignments[post.id];
+    var val = (pa && pa.workerIds[i]) ? pa.workerIds[i] : APP.state.emptyVal();
+    var text = APP.state.cellDisplay(val, task);
+    var kindClass = val.t === 'ref' ? (' kind-' + val.rt) : '';
+    var cohortClass = '';
+    if (val.t === 'ref' && val.rt === 'trainee') {
+      var tr = APP.state.findById(APP.state.get().pools.trainees, val.id);
+      if (tr && tr.cohort) cohortClass = ' cohort-' + tr.cohort;
+      if (pa && pa.phoneCarrierId && pa.phoneCarrierId === val.id) text += ' 📱';
+    }
+    return { cellId: cellId, text: text, kindClass: kindClass, cohortClass: cohortClass };
+  }
+
   function gridHtml(task) {
     if (!task.posts.length) {
       return '<p class="muted">אין עדיין עמדות עבודה למשימה זו. הוסף עמדה כדי להתחיל.</p>';
     }
-    var maxSlots = task.assignment
-      ? Math.max.apply(null, task.posts.map(function (p) { return p.workerCount; }).concat([0]))
-      : 0;
+    var maxSlots = taskMaxSlots(task);
 
     var head = '<tr>' + task.posts.map(function (post) {
       return '<th>' + postHeaderHtml(task, post) + postActionsLine(post) + '</th>';
@@ -84,28 +123,38 @@ APP.render = (function () {
     var bodyRows = '';
     for (var i = 0; i < maxSlots; i++) {
       bodyRows += '<tr>' + task.posts.map(function (post) {
-        if (i >= post.workerCount) return '<td class="grid-cell empty-cell"></td>';
-        var cellId = 'post:' + post.id + ':slot:' + i;
-        var pa = task.assignment.postAssignments[post.id];
-        var val = (pa && pa.workerIds[i]) ? pa.workerIds[i] : APP.state.emptyVal();
-        var text = APP.state.cellDisplay(val, task);
-        var kindClass = val.t === 'ref' ? (' kind-' + val.rt) : '';
-        var cohortClass = '';
-        if (val.t === 'ref' && val.rt === 'trainee') {
-          var tr = APP.state.findById(APP.state.get().pools.trainees, val.id);
-          if (tr && tr.cohort) cohortClass = ' cohort-' + tr.cohort;
-          if (pa && pa.phoneCarrierId && pa.phoneCarrierId === val.id) text += ' 📱';
-        }
-        return '<td class="grid-cell cell' + kindClass + cohortClass + '" tabindex="0" data-cell-id="' + cellId + '">' +
-          '<span class="cell-text">' + U.escapeHtml(text) + '</span>' +
+        var cell = slotCellData(task, post, i);
+        if (!cell) return '<td class="grid-cell empty-cell"></td>';
+        return '<td class="grid-cell cell' + cell.kindClass + cell.cohortClass + '" tabindex="0" data-cell-id="' + cell.cellId + '">' +
+          '<span class="cell-text">' + U.escapeHtml(cell.text) + '</span>' +
           '</td>';
       }).join('') + '</tr>';
     }
 
-    return '<div class="grid-scroll"><table class="assign-table">' +
+    return '<div class="assign-table-wrap"><div class="grid-scroll"><table class="assign-table">' +
       '<thead>' + head + '</thead>' +
       '<tbody>' + bodyRows + '</tbody>' +
-      '</table></div>';
+      '</table></div></div>';
+  }
+
+  function postCardsHtml(task) {
+    if (!task.posts.length) return '';
+    var maxSlots = taskMaxSlots(task);
+    var cards = task.posts.map(function (post) {
+      var rows = '';
+      for (var i = 0; i < maxSlots; i++) {
+        var cell = slotCellData(task, post, i);
+        if (!cell) continue;
+        rows += '<div class="cell post-card-cell' + cell.kindClass + cell.cohortClass + '" tabindex="0" data-cell-id="' + cell.cellId + '">' +
+          '<span class="cell-text">' + U.escapeHtml(cell.text || '(ריק)') + '</span>' +
+          '</div>';
+      }
+      return '<div class="post-card">' +
+        '<div class="post-card-header">' + postHeaderHtml(task, post) + postActionsLine(post) + '</div>' +
+        '<div class="post-card-slots">' + rows + '</div>' +
+        '</div>';
+    }).join('');
+    return '<div class="post-cards">' + cards + '</div>';
   }
 
   function spareHtml(task) {
@@ -143,6 +192,7 @@ APP.render = (function () {
       '<div class="guests-list">' + list + '</div>' +
       '<div class="row">' +
       '<input type="text" id="new-guest-name" placeholder="שם אורח">' +
+      '<select id="new-guest-gender">' + U.genderOptions('m') + '</select>' +
       '<button class="btn-secondary" data-action="add-guest">הוסף אורח</button>' +
       '</div>' +
       '</div>';
@@ -196,7 +246,7 @@ APP.render = (function () {
         "<label>אחראיות - כמות מינ<input type=\"number\" min=\"0\" id=\"req-resp-count\" value=\"" + r.responsibilityMinCount.count + "\"></label>" +
         "<label>הנהגה - רמה<select id=\"req-lead-level\">" + U.ratingOptions(r.leadershipMinCount.level) + "</select></label>" +
         "<label>הנהגה - כמות מינ<input type=\"number\" min=\"0\" id=\"req-lead-count\" value=\"" + r.leadershipMinCount.count + "\"></label>" +
-        "<label>מספר עובדים נדרש בעמדה<input type=\"number\" min=\"1\" id=\"req-worker-count\" value=\"" + s.workerCount + "\"></label>" +
+        "<label>מספר עובדים נדרש בעמדה (השאר ריק לשיבוץ גמיש)<input type=\"number\" min=\"1\" id=\"req-worker-count\" value=\"" + (s.workerCount == null ? "" : s.workerCount) + "\"></label>" +
         "<label>מינ' בנים<input type=\"number\" min=\"0\" id=\"req-gender-male\" value=\"" + r.genderMinCount.male + "\"></label>" +
         "<label>מינ' בנות<input type=\"number\" min=\"0\" id=\"req-gender-female\" value=\"" + r.genderMinCount.female + "\"></label>" +
         "</div>" +
@@ -236,6 +286,7 @@ APP.render = (function () {
 
       '<div class="section">' +
       gridHtml(task) +
+      postCardsHtml(task) +
       spareHtml(task) +
       '</div>' +
 
@@ -244,6 +295,24 @@ APP.render = (function () {
       '</div>' +
 
       '<p class="drag-hint no-print">טיפ: אפשר לגרור כל תא (שם עובד או כותרת עמדה) ולהחליף אותו עם כל תא אחר.</p>' +
+      '</div>';
+  }
+
+  function carriedPostsModalHtml(task) {
+    var pools = APP.state.get().pools;
+    var rows = task.posts.map(function (post) {
+      var farmer = APP.state.findById(pools.farmers, post.farmerId);
+      var leaderName = APP.state.cellDisplay(post.leader, task);
+      return '<label class="absent-item">' +
+        '<input type="checkbox" data-post-id="' + post.id + '" checked>' +
+        U.escapeHtml((farmer ? farmer.name : '(ללא חקלאי)') + ' - ' + (leaderName || '(ריק)')) +
+        '</label>';
+    }).join('');
+    return '<h2>עמדות מהיום הקודם</h2>' +
+      '<p class="muted">העמדות הבאות הועתקו אוטומטית מהמשימה הקודמת. סמן/י אילו להשאיר, ובטל/י סימון כדי למחוק.</p>' +
+      '<div class="absent-list">' + rows + '</div>' +
+      '<div class="row" style="margin-top:12px;">' +
+      '<button class="btn-primary" data-action="carried-posts-done">המשך</button>' +
       '</div>';
   }
 
@@ -272,7 +341,7 @@ APP.render = (function () {
       '<div><dt>חקלאי</dt><dd>' + U.escapeHtml(farmer ? farmer.name : '-') + '</dd></div>' +
       '<div><dt>טלפון</dt><dd>' + U.escapeHtml((farmer && farmer.phone) || '-') + '</dd></div>' +
       '<div><dt>מיקום</dt><dd>' + U.escapeHtml((farmer && farmer.location) || '-') + '</dd></div>' +
-      '<div><dt>מספר עובדים</dt><dd>' + post.workerCount + '</dd></div>' +
+      '<div><dt>מספר עובדים</dt><dd>' + (post.workerCount != null ? post.workerCount : 'גמיש') + '</dd></div>' +
       '<div><dt>חוזק</dt><dd>' + r.strength + '</dd></div>' +
       '<div><dt>זריזות</dt><dd>' + r.dexterity + '</dd></div>' +
       '<div><dt>אחראיות</dt><dd>≥' + r.responsibilityMinCount.level + ' x' + r.responsibilityMinCount.count + '</dd></div>' +
@@ -332,6 +401,7 @@ APP.render = (function () {
     renderTaskTab: renderTaskTab,
     postStepperHtml: postStepperHtml,
     taskDetailsModalHtml: taskDetailsModalHtml,
+    carriedPostsModalHtml: carriedPostsModalHtml,
     renderPostRequirementsTab: renderPostRequirementsTab
   };
 })();

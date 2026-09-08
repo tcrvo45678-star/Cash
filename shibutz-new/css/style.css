@@ -140,8 +140,21 @@ button {
 .post-header { padding: 6px; border-radius: 6px; }
 .post-leader-name { font-weight: 700; color: var(--bottle); text-align: center; font-size: var(--fs-3); }
 .post-farmer-name { font-size: var(--fs-1); color: var(--muted); text-align: center; font-weight: 600; }
+.post-farmer-details { font-size: var(--fs-1); color: var(--muted); text-align: center; }
+.post-worker-count { font-size: var(--fs-1); color: var(--muted); text-align: center; margin-top: 2px; }
 .grid-cell { padding: 10px 8px; text-align: center; min-height: 20px; }
 .empty-cell { background: repeating-linear-gradient(45deg, transparent, transparent 8px, var(--divider) 8px, var(--divider) 9px); }
+
+/* ---- mobile: one card per post instead of the table ---- */
+.post-cards { display: none; }
+.post-card { border: 1px solid var(--divider); border-radius: 10px; padding: 10px; margin-bottom: 12px; background: white; }
+.post-card-header { border-bottom: 1px solid var(--divider); padding-bottom: 8px; margin-bottom: 8px; }
+.post-card-slots { display: flex; flex-direction: column; gap: 6px; }
+.post-card-cell { padding: 10px; border-radius: 6px; background: var(--paper); border: 1px solid var(--divider); text-align: center; }
+@media (max-width: 640px) {
+  .assign-table-wrap { display: none; }
+  .post-cards { display: block; }
+}
 
 .spare-panel { margin-top: 16px; padding: 12px; background: #FBF4E8; border-radius: 10px; }
 .spare-panel h3 { color: var(--rust); }

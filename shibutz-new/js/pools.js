@@ -76,7 +76,7 @@ APP.pools = (function () {
     el.innerHTML = '<div class="card">' +
       '<h2>חקלאים</h2>' +
       '<div class="table-scroll"><table class="pool-table">' +
-      '<thead><tr><th>שם</th><th>טלפון</th><th>מיקום</th><th>חניכים מועדפים</th><th>פעיל</th><th></th></tr></thead>' +
+      '<thead><tr><th>שם</th><th>טלפון</th><th>מיקום</th><th>סוג עבודה</th><th>חניכים מועדפים</th><th>פעיל</th><th></th></tr></thead>' +
       '<tbody>' +
       list.map(function (f) {
         var prefNames = (f.preferredTraineeIds || [])
@@ -86,13 +86,14 @@ APP.pools = (function () {
           '<td><input class="pool-input" data-field="name" aria-label="שם" value="' + U.escapeHtml(f.name) + '"></td>' +
           '<td><input class="pool-input" data-field="phone" aria-label="טלפון" value="' + U.escapeHtml(f.phone || '') + '"></td>' +
           '<td><input class="pool-input" data-field="location" aria-label="מיקום" value="' + U.escapeHtml(f.location || '') + '"></td>' +
+          '<td><input class="pool-input" data-field="jobType" aria-label="סוג עבודה" value="' + U.escapeHtml(f.jobType || '') + '"></td>' +
           '<td><span class="muted">' + (prefNames || '-') + '</span> ' +
             '<button class="btn-tiny" data-action="edit-farmer-prefs" data-farmer-id="' + f.id + '">ערוך</button></td>' +
           '<td><input type="checkbox" data-field="active" aria-label="פעיל" ' + (f.active !== false ? 'checked' : '') + '></td>' +
           '<td><button class="btn-tiny btn-danger" data-action="delete-farmers">מחק</button></td>' +
           '</tr>';
       }).join('') +
-      (list.length ? '' : '<tr><td colspan="6" class="empty-row">אין חקלאים עדיין</td></tr>') +
+      (list.length ? '' : '<tr><td colspan="7" class="empty-row">אין חקלאים עדיין</td></tr>') +
       '</tbody></table></div>' +
       '<div class="row add-row">' +
       '<input type="text" id="new-farmers-name" placeholder="שם">' +

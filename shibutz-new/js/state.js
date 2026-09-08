@@ -65,7 +65,7 @@ APP.state = (function () {
     return l;
   }
   function addFarmer(name) {
-    var f = { id: APP.storage.uid('f'), name: name, active: true, phone: '', location: '', preferredTraineeIds: [] };
+    var f = { id: APP.storage.uid('f'), name: name, active: true, phone: '', location: '', jobType: '', preferredTraineeIds: [] };
     data.pools.farmers.push(f);
     save();
     return f;
@@ -169,8 +169,11 @@ APP.state = (function () {
     save();
   }
 
-  function addGuestToTask(task, name) {
-    var g = { id: APP.storage.uid('g'), name: name };
+  function addGuestToTask(task, name, gender) {
+    var g = {
+      id: APP.storage.uid('g'), name: name, gender: gender || 'm',
+      ratings: { strength: 4, dexterity: 4, responsibility: 4, leadership: 4 }
+    };
     task.extraGuests.push(g);
     save();
     return g;

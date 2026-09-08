@@ -15,9 +15,9 @@ APP.task = (function () {
     if (existing) {
       APP.state.get().currentTaskId = existing.id;
       APP.state.save();
-      return existing;
+      return { task: existing, wasNew: false };
     }
-    return APP.state.createTask(dateStr);
+    return { task: APP.state.createTask(dateStr), wasNew: true };
   }
 
   function openTask(id) {
@@ -34,10 +34,10 @@ APP.task = (function () {
     APP.state.save();
   }
 
-  function addGuest(name) {
+  function addGuest(name, gender) {
     var t = APP.state.getCurrentTask();
     if (!t || !name) return;
-    APP.state.addGuestToTask(t, name);
+    APP.state.addGuestToTask(t, name, gender);
   }
 
   function removeGuest(guestId) {
@@ -58,6 +58,12 @@ APP.task = (function () {
     var t = APP.state.getCurrentTask();
     if (!t) return;
     if (!confirm('למחוק את העמדה?')) return;
+    APP.state.removePost(t, postId);
+  }
+
+  function deletePostNoConfirm(postId) {
+    var t = APP.state.getCurrentTask();
+    if (!t) return;
     APP.state.removePost(t, postId);
   }
 
@@ -138,7 +144,8 @@ APP.task = (function () {
     stepper.requirements.leadershipMinCount.count = parseInt(document.getElementById('req-lead-count').value, 10) || 0;
     stepper.requirements.genderMinCount.male = parseInt(document.getElementById('req-gender-male').value, 10) || 0;
     stepper.requirements.genderMinCount.female = parseInt(document.getElementById('req-gender-female').value, 10) || 0;
-    stepper.workerCount = parseInt(document.getElementById('req-worker-count').value, 10) || 1;
+    var workerCountStr = document.getElementById('req-worker-count').value;
+    stepper.workerCount = workerCountStr ? parseInt(workerCountStr, 10) : null;
   }
 
   function commitStepper() {
@@ -179,6 +186,7 @@ APP.task = (function () {
     addGuest: addGuest,
     removeGuest: removeGuest,
     deletePost: deletePost,
+    deletePostNoConfirm: deletePostNoConfirm,
     startStepper: startStepper,
     cancelStepper: cancelStepper,
     getStepper: getStepper,
