@@ -15,8 +15,14 @@
   <div class="login-box">
     <h1>שיבוץ עובדים חקלאיים</h1>
     <p id="login-mode-label" class="muted"></p>
-    <input id="login-password" type="password" placeholder="סיסמה" autocomplete="off">
-    <input id="login-password-confirm" type="password" placeholder="אימות סיסמה" autocomplete="off" hidden>
+    <div class="password-field">
+      <input id="login-password" type="password" placeholder="סיסמה" autocomplete="off">
+      <button type="button" class="password-toggle" data-toggle-for="login-password">הצג</button>
+    </div>
+    <div class="password-field" id="login-password-confirm-field" hidden>
+      <input id="login-password-confirm" type="password" placeholder="אימות סיסמה" autocomplete="off">
+      <button type="button" class="password-toggle" data-toggle-for="login-password-confirm">הצג</button>
+    </div>
     <button id="login-submit" class="btn-primary">כניסה</button>
     <p id="login-error" class="error-text" hidden></p>
     <p class="disclaimer">⚠️ הגנת הסיסמה כאן היא בסיסית בלבד (אתר סטטי, ללא שרת) - אינה מהווה אבטחת מידע אמיתית. אין להזין באתר זה מידע רגיש.</p>
@@ -32,7 +38,7 @@
   <div class="tabs no-print">
     <button class="tab-btn active" data-tab="task">משימה יומית</button>
     <button class="tab-btn" data-tab="history">היסטוריה</button>
-    <button class="tab-btn" data-tab="trainees">מתאמנים</button>
+    <button class="tab-btn" data-tab="trainees">חניכים</button>
     <button class="tab-btn" data-tab="leaders">אנשי צוות</button>
     <button class="tab-btn" data-tab="farmers">חקלאים</button>
     <button class="tab-btn" data-tab="templates">תבניות עמדות</button>
@@ -58,6 +64,7 @@
 <script src="js/modal.js"></script>
 <script src="js/storage.js"></script>
 <script src="js/state.js"></script>
+<script src="js/seed-data.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/assign.js"></script>
 <script src="js/dragswap.js"></script>

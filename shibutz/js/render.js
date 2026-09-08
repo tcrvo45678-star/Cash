@@ -118,7 +118,7 @@ APP.render = (function () {
 
   function absentPanel(task) {
     var trainees = APP.state.activeOnly(APP.state.get().pools.trainees);
-    if (!trainees.length) return '<p class="muted">אין מתאמנים במאגר. הוסף מתאמנים בלשונית "מתאמנים".</p>';
+    if (!trainees.length) return '<p class="muted">אין חניכים במאגר. הוסף חניכים בלשונית "חניכים".</p>';
     return '<div class="absent-list">' + trainees.map(function (t) {
       var checked = task.absentTraineeIds.indexOf(t.id) >= 0;
       return '<label class="absent-item">' +

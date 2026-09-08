@@ -10,6 +10,26 @@
     APP.modal.close();
   }
 
+  function resetPasswordToggles() {
+    APP.util.qsa('.password-toggle').forEach(function (btn) {
+      var input = document.getElementById(btn.dataset.toggleFor);
+      if (input) input.type = 'password';
+      btn.textContent = 'הצג';
+    });
+  }
+
+  function wirePasswordToggles() {
+    APP.util.qsa('.password-toggle').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var input = document.getElementById(btn.dataset.toggleFor);
+        if (!input) return;
+        var isHidden = input.type === 'password';
+        input.type = isHidden ? 'text' : 'password';
+        btn.textContent = isHidden ? 'הסתר' : 'הצג';
+      });
+    });
+  }
+
   function rerenderPool(key) {
     if (key === 'trainees') APP.pools.renderTrainees();
     if (key === 'leaders') APP.pools.renderLeaders();
@@ -25,6 +45,11 @@
         if (!date) return;
         APP.task.createTaskForDate(date);
         APP.render.renderTaskTab();
+        var task = APP.state.getCurrentTask();
+        if (task && task.posts.length === 0) {
+          APP.task.startStepper();
+          openPostModal();
+        }
       },
       'auto-assign': function () {
         var task = APP.state.getCurrentTask();
@@ -187,7 +212,7 @@
       var delBtn = e.target.closest('[data-action="delete-trainee"]');
       if (delBtn) {
         var tr = delBtn.closest('tr[data-id]');
-        if (!confirm('למחוק את המתאמן לצמיתות?')) return;
+        if (!confirm('למחוק את החניך לצמיתות?')) return;
         var d = APP.state.get();
         d.pools.trainees = d.pools.trainees.filter(function (x) { return x.id !== tr.dataset.id; });
         APP.state.save();
@@ -345,6 +370,7 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     APP.state.init();
+    APP.seedData.seedInitialTeamIfNeeded();
     APP.task.ensureCurrentTaskLoaded();
 
     var loginScreen = document.getElementById('login-screen');
@@ -357,11 +383,12 @@
       document.getElementById('login-mode-label').textContent = setupMode
         ? 'זו הכניסה הראשונה - הגדר סיסמה חדשה לאתר:'
         : 'הזן סיסמה כדי להיכנס:';
-      document.getElementById('login-password-confirm').hidden = !setupMode;
+      document.getElementById('login-password-confirm-field').hidden = !setupMode;
       document.getElementById('login-submit').textContent = setupMode ? 'הגדר סיסמה' : 'כניסה';
       document.getElementById('login-password').value = '';
       document.getElementById('login-password-confirm').value = '';
       document.getElementById('login-error').hidden = true;
+      resetPasswordToggles();
       document.getElementById('login-password').focus();
     }
 
@@ -402,6 +429,8 @@
         errEl.hidden = false;
       }
     }
+
+    wirePasswordToggles();
 
     document.getElementById('login-submit').addEventListener('click', submitLogin);
     document.getElementById('login-password').addEventListener('keydown', function (e) { if (e.key === 'Enter') submitLogin(); });

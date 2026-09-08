@@ -187,6 +187,16 @@ tr.inactive-row { opacity: 0.5; }
 .login-box input { width: 100%; }
 .login-box button { width: 100%; margin-top: 4px; }
 
+.password-field { position: relative; }
+.password-field input { width: 100%; padding-left: 46px; }
+.password-field .password-toggle {
+  position: absolute; left: 4px; top: 50%; transform: translateY(-50%);
+  width: auto; margin-top: 0;
+  border: none; background: none; color: var(--muted);
+  cursor: pointer; font-size: var(--fs-1); padding: 4px 6px; line-height: 1;
+}
+.password-field .password-toggle:hover { color: var(--bottle); }
+
 /* ---- modal ---- */
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(15, 25, 22, 0.5);
