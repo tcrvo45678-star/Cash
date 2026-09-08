@@ -3,6 +3,8 @@ window.APP = window.APP || {};
 APP.render = (function () {
   var U = APP.util;
   var dragAttached = false;
+  var mobileLayoutMq = window.matchMedia('(max-width: 640px)');
+  var mqAttached = false;
 
   function renderTaskTab() {
     var el = document.getElementById('tab-task');
@@ -22,6 +24,10 @@ APP.render = (function () {
         renderTaskTab();
       });
       dragAttached = true;
+    }
+    if (!mqAttached) {
+      mobileLayoutMq.addEventListener('change', renderTaskTab);
+      mqAttached = true;
     }
   }
 
@@ -57,20 +63,26 @@ APP.render = (function () {
     var name = APP.state.cellDisplay(post.leader, task);
     var farmer = APP.state.findById(APP.state.get().pools.farmers, post.farmerId);
     var detailsLine = [farmer && farmer.jobType, farmer && farmer.location].filter(Boolean).join(' · ');
+    var transportLabel = post.transportMethod === 'transporter' ? '🚐 טרנספורטר' : '🚌 הסעה';
     return '<div class="cell post-header" tabindex="0" data-cell-id="' + cellId + '">' +
       '<div class="post-farmer-name">' + U.escapeHtml(farmer ? farmer.name : '(ללא חקלאי)') + '</div>' +
       (detailsLine ? '<div class="post-farmer-details">' + U.escapeHtml(detailsLine) + '</div>' : '') +
       '<div class="post-leader-name">' + U.escapeHtml(name || '(ריק)') + '</div>' +
       '<div class="post-worker-count">' + workerCountBadge(task, post) + '</div>' +
+      '<div class="post-transport">' + transportLabel + '</div>' +
       '</div>';
   }
 
   function workerCountBadge(task, post) {
     var pa = task.assignment && task.assignment.postAssignments[post.id];
     var assignedCount = pa ? pa.workerIds.filter(function (w) { return w.t === 'ref'; }).length : 0;
-    return post.workerCount != null
-      ? assignedCount + '/' + post.workerCount + ' עובדים'
-      : assignedCount + ' עובדים (גמיש)';
+    var leader = (post.leader && post.leader.t === 'ref' && post.leader.rt === 'leader')
+      ? APP.state.findById(APP.state.get().pools.leaders, post.leader.id) : null;
+    var totalCount = assignedCount + (leader ? 1 : 0);
+    var suffix = leader ? ' (כולל ' + leader.name + ')' : '';
+    return (post.workerCount != null
+      ? totalCount + '/' + post.workerCount + ' עובדים'
+      : totalCount + ' עובדים (גמיש)') + suffix;
   }
 
   function postActionsLine(post) {
@@ -157,6 +169,25 @@ APP.render = (function () {
     return '<div class="post-cards">' + cards + '</div>';
   }
 
+  var SHORTFALL_TRAIT_LABELS = {
+    responsibility: 'אחראיות', leadership: 'הנהגה',
+    'gender-male': 'מינימום בנים', 'gender-female': 'מינימום בנות'
+  };
+
+  function shortfallsHtml(task) {
+    if (!task.assignment || !task.assignment.shortfalls || !task.assignment.shortfalls.length) return '';
+    var items = task.assignment.shortfalls.map(function (s) {
+      var post = task.posts.filter(function (p) { return p.id === s.postId; })[0];
+      var farmer = post && APP.state.findById(APP.state.get().pools.farmers, post.farmerId);
+      var label = farmer ? farmer.name : '(עמדה)';
+      var msg = s.type === 'headcount'
+        ? 'חסרים ' + s.missing + ' עובדים'
+        : 'לא הושג ' + (SHORTFALL_TRAIT_LABELS[s.trait] || s.trait);
+      return '<li>⚠️ ' + U.escapeHtml(label) + ': ' + U.escapeHtml(msg) + '</li>';
+    }).join('');
+    return '<div class="section no-print"><ul class="shortfall-list">' + items + '</ul></div>';
+  }
+
   function spareHtml(task) {
     if (!task.assignment || !task.assignment.spare.length) return '';
     var items = task.assignment.spare.map(function (v, i) {
@@ -215,6 +246,10 @@ APP.render = (function () {
         "</select>" +
         "<div class=\"or-sep\">או הוסף חקלאי חדש:</div>" +
         "<input type=\"text\" id=\"stepper-farmer-new\" placeholder=\"שם חקלאי חדש\" value=\"" + U.escapeHtml(s.newFarmerName) + "\">" +
+        "<div class=\"or-sep\">מיקום עבודה:</div>" +
+        "<input type=\"text\" id=\"stepper-farmer-location\" placeholder=\"מיקום\" value=\"" + U.escapeHtml(s.location || "") + "\">" +
+        "<div class=\"or-sep\">סוג עבודה:</div>" +
+        "<input type=\"text\" id=\"stepper-farmer-jobtype\" placeholder=\"סוג עבודה\" value=\"" + U.escapeHtml(s.jobType || "") + "\">" +
         "<div class=\"row\">" +
         "<button class=\"btn-secondary\" data-action=\"stepper-cancel\">בטל</button>" +
         "<button class=\"btn-primary\" data-action=\"stepper-next-1\">הבא</button>" +
@@ -284,9 +319,10 @@ APP.render = (function () {
       '<h3>אורחים</h3>' + guestsHtml(task) +
       '</div>' +
 
+      shortfallsHtml(task) +
+
       '<div class="section">' +
-      gridHtml(task) +
-      postCardsHtml(task) +
+      (mobileLayoutMq.matches ? postCardsHtml(task) : gridHtml(task)) +
       spareHtml(task) +
       '</div>' +
 
@@ -295,6 +331,24 @@ APP.render = (function () {
       '</div>' +
 
       '<p class="drag-hint no-print">טיפ: אפשר לגרור כל תא (שם עובד או כותרת עמדה) ולהחליף אותו עם כל תא אחר.</p>' +
+      '</div>';
+  }
+
+  function assignGuestModalHtml(task, guest) {
+    var pools = APP.state.get().pools;
+    var options = task.posts.map(function (post) {
+      var farmer = APP.state.findById(pools.farmers, post.farmerId);
+      var leaderName = APP.state.cellDisplay(post.leader, task);
+      var label = (farmer ? farmer.name : '(ללא חקלאי)') + ' - ' + (leaderName || '(ריק)');
+      return '<option value="' + post.id + '">' + U.escapeHtml(label) + '</option>';
+    }).join('');
+    return '<h2>לאיזו עמדה לשבץ את ' + U.escapeHtml(guest.name) + '?</h2>' +
+      '<select id="assign-guest-post-select">' +
+      options +
+      '<option value="">לא לשבץ כרגע (רק להוסיף למאגר)</option>' +
+      '</select>' +
+      '<div class="row" style="margin-top:12px;">' +
+      '<button class="btn-primary" data-action="assign-guest-confirm" data-guest-id="' + guest.id + '">אישור</button>' +
       '</div>';
   }
 
@@ -402,6 +456,7 @@ APP.render = (function () {
     postStepperHtml: postStepperHtml,
     taskDetailsModalHtml: taskDetailsModalHtml,
     carriedPostsModalHtml: carriedPostsModalHtml,
+    assignGuestModalHtml: assignGuestModalHtml,
     renderPostRequirementsTab: renderPostRequirementsTab
   };
 })();

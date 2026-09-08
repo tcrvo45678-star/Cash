@@ -229,6 +229,32 @@ APP.state = (function () {
     return null;
   }
 
+  // Direct placement of a guest into a specific post - bypasses the
+  // auto-assign algorithm entirely. Reuses an existing empty slot if one
+  // exists; otherwise grows a flexible post naturally, or bumps a fixed
+  // post's workerCount by 1 so the new slot is visible in the grid.
+  function findGuestSlotIndex(task, post) {
+    var pa = task.assignment && task.assignment.postAssignments[post.id];
+    var arr = pa ? pa.workerIds : [];
+    for (var i = 0; i < arr.length; i++) {
+      if (arr[i].t === 'empty') return i;
+    }
+    if (post.workerCount != null && arr.length >= post.workerCount) {
+      post.workerCount += 1;
+    }
+    return arr.length;
+  }
+
+  function assignGuestToPost(task, guestId, postId) {
+    var post = task.posts.filter(function (p) { return p.id === postId; })[0];
+    if (!post) return false;
+    var idx = findGuestSlotIndex(task, post);
+    var cell = resolveCell(task, 'post:' + postId + ':slot:' + idx);
+    cell.set(refVal('guest', guestId));
+    save();
+    return true;
+  }
+
   function swapCells(task, cellIdA, cellIdB) {
     var a = resolveCell(task, cellIdA);
     var b = resolveCell(task, cellIdB);
@@ -250,6 +276,6 @@ APP.state = (function () {
     sortedTasksDesc: sortedTasksDesc, getTask: getTask, getCurrentTask: getCurrentTask, todayISO: todayISO,
     createTask: createTask, deleteTask: deleteTask,
     addPost: addPost, removePost: removePost, addGuestToTask: addGuestToTask,
-    resolveCell: resolveCell, swapCells: swapCells
+    resolveCell: resolveCell, swapCells: swapCells, assignGuestToPost: assignGuestToPost
   };
 })();

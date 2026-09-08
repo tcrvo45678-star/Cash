@@ -14,6 +14,16 @@ APP.util = (function () {
   function qs(sel, root) { return (root || document).querySelector(sel); }
   function qsa(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
 
+  function debounce(fn, ms) {
+    var timer = null;
+    return function () {
+      var args = arguments;
+      var ctx = this;
+      clearTimeout(timer);
+      timer = setTimeout(function () { fn.apply(ctx, args); }, ms);
+    };
+  }
+
   function ratingOptions(selected) {
     var out = '';
     for (var i = 1; i <= 7; i++) {
@@ -49,6 +59,6 @@ APP.util = (function () {
   return {
     escapeHtml: escapeHtml, qs: qs, qsa: qsa, ratingOptions: ratingOptions,
     COHORTS: COHORTS, cohortOptions: cohortOptions, cohortRank: cohortRank,
-    genderOptions: genderOptions
+    genderOptions: genderOptions, debounce: debounce
   };
 })();
