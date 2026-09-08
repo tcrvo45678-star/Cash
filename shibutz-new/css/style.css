@@ -205,6 +205,9 @@ button {
 }
 .pool-table th, .history-table th { background: var(--icon-bg); color: var(--bottle); }
 .pool-input { width: 120px; }
+.req-pair { display: flex; gap: 4px; align-items: center; justify-content: center; }
+.req-pair select { min-width: 46px; }
+.req-pair input[type="number"] { width: 48px; }
 .empty-row { color: var(--muted); }
 tr.inactive-row { opacity: 0.5; }
 

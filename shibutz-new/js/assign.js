@@ -55,7 +55,33 @@ APP.assign = (function () {
     return trainee.ratings[trait] >= level;
   }
 
-  function capacityFor(post) { return post.workerCount != null ? post.workerCount : Infinity; }
+  // A post's leader works the post too - everyone works together - so a
+  // post configured for N people is N total INCLUDING its leader, not N
+  // plus the leader on top. A post with workerCount 5 and a leader only
+  // has 4 more slots to fill from the trainee/guest/surplus-leader pool.
+  function hasLeader(post) {
+    return !!(post.leader && post.leader.t === 'ref' && post.leader.rt === 'leader' && post.leader.id);
+  }
+  function postCapacity(post) {
+    if (post.workerCount == null) return null;
+    return Math.max(0, post.workerCount - (hasLeader(post) ? 1 : 0));
+  }
+  function capacityFor(post) {
+    var cap = postCapacity(post);
+    return cap == null ? Infinity : cap;
+  }
+
+  // Purely cosmetic ordering for the final row layout: same-cohort trainees
+  // (same grid color) end up adjacent instead of scattered in whatever
+  // order the algorithm happened to place them, guests come after all
+  // trainees, and surplus leaders (no cohort color of their own) come last.
+  function colorClusterKey(c) {
+    if (c.leader) return 1000;
+    if (c.kind === 'guest') return 500;
+    var cohort = (c.trainee && c.trainee.cohort) || 'e';
+    return 100 - APP.util.cohortRank(cohort);
+  }
+  function colorClusterCompare(a, b) { return colorClusterKey(a) - colorClusterKey(b); }
 
   function runAutoAssign(task, pools) {
     var trainees = APP.state.activeOnly(pools.trainees).filter(function (t) {
@@ -222,17 +248,25 @@ APP.assign = (function () {
     var shortfalls = [];
     task.posts.forEach(function (post) {
       var assigned = assignedByPost[post.id];
+      // Cluster by color before laying out the rows: same-cohort trainees
+      // sit together, then guests, then surplus leaders - so the printed/
+      // on-screen table reads as clean color blocks instead of a scatter
+      // in whatever order the algorithm happened to pick people.
+      assigned = assigned.slice().sort(colorClusterCompare);
       var workerIds = assigned.map(function (c) {
         if (c.trainee) return APP.state.refVal(c.kind || 'trainee', c.id);
         if (c.leader) return APP.state.refVal('leader', c.id);
         return APP.state.emptyVal();
       });
-      // Fixed-size posts still show an empty row for each unfilled slot;
-      // flexible posts show exactly what was assigned, nothing padded.
-      if (post.workerCount != null) {
-        while (workerIds.length < post.workerCount) workerIds.push(APP.state.emptyVal());
-        if (assigned.length < post.workerCount) {
-          shortfalls.push({ postId: post.id, type: 'headcount', missing: post.workerCount - assigned.length });
+      // Fixed-size posts still show an empty row for each unfilled slot
+      // (up to the post's real capacity, i.e. excluding the leader's own
+      // slot); flexible posts show exactly what was assigned, nothing
+      // padded.
+      var cap = postCapacity(post);
+      if (cap != null) {
+        while (workerIds.length < cap) workerIds.push(APP.state.emptyVal());
+        if (assigned.length < cap) {
+          shortfalls.push({ postId: post.id, type: 'headcount', missing: cap - assigned.length });
         }
       }
       postAssignments[post.id] = { workerIds: workerIds };
@@ -274,5 +308,5 @@ APP.assign = (function () {
     });
   }
 
-  return { runAutoAssign: runAutoAssign, recomputePhoneCarriers: recomputePhoneCarriers };
+  return { runAutoAssign: runAutoAssign, recomputePhoneCarriers: recomputePhoneCarriers, postCapacity: postCapacity };
 })();
