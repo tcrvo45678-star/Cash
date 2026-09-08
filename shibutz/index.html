@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>שיבוץ עובדים חקלאיים</title>
+<meta name="theme-color" content="#0E4B44">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/print.css" media="print">
+</head>
+<body>
+
+<div id="login-screen" class="login-screen">
+  <div class="login-box">
+    <h1>שיבוץ עובדים חקלאיים</h1>
+    <p id="login-mode-label" class="muted"></p>
+    <input id="login-password" type="password" placeholder="סיסמה" autocomplete="off">
+    <input id="login-password-confirm" type="password" placeholder="אימות סיסמה" autocomplete="off" hidden>
+    <button id="login-submit" class="btn-primary">כניסה</button>
+    <p id="login-error" class="error-text" hidden></p>
+    <p class="disclaimer">⚠️ הגנת הסיסמה כאן היא בסיסית בלבד (אתר סטטי, ללא שרת) - אינה מהווה אבטחת מידע אמיתית. אין להזין באתר זה מידע רגיש.</p>
+  </div>
+</div>
+
+<div id="app-shell" class="container" hidden>
+  <div class="header">
+    <h1>שיבוץ עובדים חקלאיים</h1>
+    <p>ניהול שיבוץ יומי למוקדי עבודה חקלאיים</p>
+  </div>
+
+  <div class="tabs no-print">
+    <button class="tab-btn active" data-tab="task">משימה יומית</button>
+    <button class="tab-btn" data-tab="history">היסטוריה</button>
+    <button class="tab-btn" data-tab="trainees">מתאמנים</button>
+    <button class="tab-btn" data-tab="leaders">אנשי צוות</button>
+    <button class="tab-btn" data-tab="farmers">חקלאים</button>
+    <button class="tab-btn" data-tab="templates">תבניות עמדות</button>
+    <button class="tab-btn" data-tab="settings">הגדרות</button>
+  </div>
+
+  <div id="tab-task" class="tab-content active"></div>
+  <div id="tab-history" class="tab-content"></div>
+  <div id="tab-trainees" class="tab-content"></div>
+  <div id="tab-leaders" class="tab-content"></div>
+  <div id="tab-farmers" class="tab-content"></div>
+  <div id="tab-templates" class="tab-content"></div>
+  <div id="tab-settings" class="tab-content"></div>
+</div>
+
+<div id="drag-ghost" class="drag-ghost" hidden></div>
+
+<script src="js/util.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/state.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/assign.js"></script>
+<script src="js/dragswap.js"></script>
+<script src="js/pools.js"></script>
+<script src="js/task.js"></script>
+<script src="js/render.js"></script>
+<script src="js/history.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
