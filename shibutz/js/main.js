@@ -43,8 +43,29 @@
     });
   }
 
+  // The "חניכים" tab can be gated behind its own password (set in
+  // Settings), separate from the app's main login - opt-in: if no
+  // trainees password is configured, this behaves exactly like before.
+  function renderTraineesTabGated() {
+    var el = document.getElementById('tab-trainees');
+    if (!el) return;
+    if (!APP.auth.hasTraineesPassword() || APP.auth.isTraineesUnlockedThisSession()) {
+      APP.pools.renderTrainees();
+      return;
+    }
+    el.innerHTML = '<div class="card">' +
+      '<h2>לשונית חניכים נעולה</h2>' +
+      '<p class="muted">הזן/י את סיסמת לשונית החניכים כדי להציג את הרשימה.</p>' +
+      '<div class="row">' +
+      '<input type="password" id="trainees-lock-password" placeholder="סיסמה">' +
+      '<button class="btn-primary" data-action="trainees-unlock">פתח</button>' +
+      '</div>' +
+      '<p id="trainees-lock-error" class="error-text" hidden>סיסמה שגויה</p>' +
+      '</div>';
+  }
+
   function rerenderPool(key) {
-    if (key === 'trainees') APP.pools.renderTrainees();
+    if (key === 'trainees') renderTraineesTabGated();
     if (key === 'leaders') APP.pools.renderLeaders();
     if (key === 'farmers') APP.pools.renderFarmers();
   }
@@ -131,18 +152,26 @@
   function autoAssignIfPosts() {
     var task = APP.state.getCurrentTask();
     if (task && task.posts.length) {
-      task.assignment = APP.assign.runAutoAssign(task, APP.state.get().pools);
-      task.updatedAt = Date.now();
-      APP.state.save();
+      try {
+        task.assignment = APP.assign.runAutoAssign(task, APP.state.get().pools);
+        task.updatedAt = Date.now();
+        APP.state.save();
+      } catch (err) {
+        alert('אירעה שגיאה בשיבוץ האוטומטי, נסה שוב.');
+      }
     }
   }
 
   function rerunAutoAssignIfNeeded() {
     var task = APP.state.getCurrentTask();
     if (task && task.assignment) {
-      task.assignment = APP.assign.runAutoAssign(task, APP.state.get().pools);
-      task.updatedAt = Date.now();
-      APP.state.save();
+      try {
+        task.assignment = APP.assign.runAutoAssign(task, APP.state.get().pools);
+        task.updatedAt = Date.now();
+        APP.state.save();
+      } catch (err) {
+        alert('אירעה שגיאה בשיבוץ האוטומטי, נסה שוב.');
+      }
     }
   }
 
@@ -192,13 +221,14 @@
       if (e.target.closest('[data-action="stepper-commit"]')) {
         APP.task.readStep3FromDom();
         if (APP.task.commitStepper() !== false) {
-          var task = APP.state.getCurrentTask();
-          if (task) {
-            task.assignment = APP.assign.runAutoAssign(task, APP.state.get().pools);
-            task.updatedAt = Date.now();
-            APP.state.save();
-          }
+          // Close and render immediately so the response feels instant -
+          // the post is already saved at this point. The (usually near-
+          // instant, but try/catch-guarded) auto-reassign runs after, with
+          // its own render once it's done, so a slow or failing recompute
+          // never leaves the modal stuck open.
           APP.modal.close();
+          APP.render.renderTaskTab();
+          autoAssignIfPosts();
           APP.render.renderTaskTab();
         }
         return;
@@ -209,14 +239,19 @@
         var postSel = document.getElementById('assign-guest-post-select');
         var chosenPostId = postSel ? postSel.value : '';
         var guestTask = APP.state.getCurrentTask();
+        APP.modal.close();
+        APP.render.renderTaskTab();
         if (guestTask && chosenPostId) {
-          APP.state.assignGuestToPost(guestTask, guestId, chosenPostId);
-          APP.assign.recomputePhoneCarriers(guestTask, APP.state.get().pools, guestTask.assignment.postAssignments);
-          APP.state.save();
+          try {
+            APP.state.assignGuestToPost(guestTask, guestId, chosenPostId);
+            APP.assign.recomputePhoneCarriers(guestTask, APP.state.get().pools, guestTask.assignment.postAssignments);
+            APP.state.save();
+          } catch (err) {
+            alert('אירעה שגיאה בשיבוץ האורח, נסה שוב.');
+          }
         } else {
           rerunAutoAssignIfNeeded();
         }
-        APP.modal.close();
         APP.render.renderTaskTab();
         return;
       }
@@ -227,8 +262,9 @@
             if (!cb.checked) APP.task.deletePostNoConfirm(cb.dataset.postId);
           });
         }
-        autoAssignIfPosts();
         APP.modal.close();
+        APP.render.renderTaskTab();
+        autoAssignIfPosts();
         APP.render.renderTaskTab();
         var afterCarried = APP.state.getCurrentTask();
         if (afterCarried && afterCarried.posts.length === 0) {
@@ -365,6 +401,17 @@
       APP.render.renderTaskTab();
     });
     el.addEventListener('click', function (e) {
+      if (e.target.closest('[data-action="trainees-unlock"]')) {
+        var pwInput = document.getElementById('trainees-lock-password');
+        var errorEl = document.getElementById('trainees-lock-error');
+        if (pwInput && APP.auth.checkTraineesPassword(pwInput.value)) {
+          APP.auth.markTraineesUnlocked();
+          renderTraineesTabGated();
+        } else if (errorEl) {
+          errorEl.hidden = false;
+        }
+        return;
+      }
       if (e.target.closest('[data-action="add-trainee-start"]')) {
         APP.modal.open(APP.pools.addTraineeModalHtml(), { onDismiss: function () { APP.modal.close(); } });
         return;
@@ -428,9 +475,21 @@
       '</div>' +
       '<div class="row" style="margin-top:20px;">' +
       '<button class="btn-secondary" data-action="change-password">שינוי סיסמה</button>' +
+      '<button class="btn-secondary" data-action="change-trainees-password">סיסמת לשונית חניכים</button>' +
       '<button class="btn-secondary" data-action="lock-now">נעילה</button>' +
       '</div>' +
       '<p class="disclaimer">⚠️ הגנת הסיסמה כאן בסיסית בלבד (אתר סטטי, ללא שרת) ואינה מהווה אבטחת מידע אמיתית - אין להזין באתר זה מידע רגיש.</p>' +
+      '<h3 style="margin-top:20px;">גיבוי אוטומטי ל-Google Sheets</h3>' +
+      '<p class="muted">הדבק כאן את כתובת ה-Web App שקיבלת אחרי פריסת ה-Apps Script (ראה google-apps-script/README.md בפרויקט). לאחר שמירת הכתובת, כל שינוי באתר יגובה אוטומטית תוך כמה שניות.</p>' +
+      '<div class="row">' +
+      '<input type="text" id="backup-url-input" placeholder="כתובת Web App" value="' + APP.util.escapeHtml(APP.backup.getUrl()) + '" style="flex:1;min-width:240px;">' +
+      '<button class="btn-secondary" data-action="save-backup-url">שמור כתובת</button>' +
+      '</div>' +
+      '<div class="row" style="margin-top:8px;">' +
+      '<button class="btn-secondary" data-action="test-backup-connection">בדוק חיבור</button>' +
+      '<button class="btn-secondary" data-action="backup-now">גבה עכשיו</button>' +
+      '<span id="backup-status" class="muted"></span>' +
+      '</div>' +
       '</div>';
   }
 
@@ -445,9 +504,44 @@
         if (p1 && p1.length >= 3) { APP.auth.setPassword(p1); alert('הסיסמה עודכנה'); }
         else if (p1) { alert('סיסמה קצרה מדי'); }
       }
+      if (e.target.closest('[data-action="change-trainees-password"]')) {
+        var tp1 = prompt('הזן סיסמה חדשה ללשונית חניכים (השאר ריק לביטול הנעילה):');
+        if (tp1 === null) { /* cancelled */ }
+        else if (tp1 === '') {
+          APP.state.get().auth = APP.state.get().auth || {};
+          delete APP.state.get().auth.traineesPasswordHash;
+          APP.state.save();
+          alert('הנעילה בוטלה - הלשונית תהיה פתוחה לכולם');
+        } else if (tp1.length >= 3) {
+          APP.auth.setTraineesPassword(tp1);
+          alert('סיסמת לשונית החניכים עודכנה');
+        } else {
+          alert('סיסמה קצרה מדי');
+        }
+      }
       if (e.target.closest('[data-action="lock-now"]')) {
         APP.auth.lock();
         location.reload();
+      }
+      if (e.target.closest('[data-action="save-backup-url"]')) {
+        var urlInput = document.getElementById('backup-url-input');
+        APP.backup.setUrl(urlInput ? urlInput.value.trim() : '');
+        var statusEl = document.getElementById('backup-status');
+        if (statusEl) statusEl.textContent = 'הכתובת נשמרה';
+      }
+      if (e.target.closest('[data-action="test-backup-connection"]')) {
+        var testStatusEl = document.getElementById('backup-status');
+        var testUrlInput = document.getElementById('backup-url-input');
+        var testUrl = testUrlInput ? testUrlInput.value.trim() : '';
+        if (testStatusEl) testStatusEl.textContent = 'בודק...';
+        APP.backup.testConnection(testUrl, function (ok) {
+          if (testStatusEl) testStatusEl.textContent = ok ? '✓ החיבור תקין' : '✗ החיבור נכשל - בדוק את הכתובת';
+        });
+      }
+      if (e.target.closest('[data-action="backup-now"]')) {
+        var nowStatusEl = document.getElementById('backup-status');
+        APP.backup.sendNow();
+        if (nowStatusEl) nowStatusEl.textContent = 'גיבוי נשלח';
       }
     });
     el.addEventListener('change', function (e) {
@@ -473,7 +567,7 @@
         if (btn.dataset.tab === 'task') APP.render.renderTaskTab();
         if (btn.dataset.tab === 'post-requirements') APP.render.renderPostRequirementsTab();
         if (btn.dataset.tab === 'history') APP.history.render();
-        if (btn.dataset.tab === 'trainees') APP.pools.renderTrainees();
+        if (btn.dataset.tab === 'trainees') renderTraineesTabGated();
         if (btn.dataset.tab === 'leaders') APP.pools.renderLeaders();
         if (btn.dataset.tab === 'farmers') APP.pools.renderFarmers();
         if (btn.dataset.tab === 'settings') renderSettings();

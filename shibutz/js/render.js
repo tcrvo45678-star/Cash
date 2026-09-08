@@ -79,7 +79,7 @@ APP.render = (function () {
     var leader = (post.leader && post.leader.t === 'ref' && post.leader.rt === 'leader')
       ? APP.state.findById(APP.state.get().pools.leaders, post.leader.id) : null;
     var totalCount = assignedCount + (leader ? 1 : 0);
-    var suffix = leader ? ' (כולל ' + leader.name + ')' : '';
+    var suffix = leader ? ' (כולל ' + U.escapeHtml(leader.name) + ')' : '';
     return (post.workerCount != null
       ? totalCount + '/' + post.workerCount + ' עובדים'
       : totalCount + ' עובדים (גמיש)') + suffix;
