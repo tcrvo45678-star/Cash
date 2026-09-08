@@ -255,10 +255,27 @@ APP.render = (function () {
         "<button class=\"btn-primary\" data-action=\"stepper-next-1\">הבא</button>" +
         "</div>";
     } else if (s.step === 2) {
+      // Leaders are a depleting pool, same idea as trainees: once someone is
+      // chosen as a post's leader, they're off the table for every other
+      // post in this task until that post is deleted (or this stepper edits
+      // it) - everyone works one job at a time. The post being edited right
+      // now is excluded from the "already used" check so its own leader
+      // stays selectable.
+      var currentTaskForLeaders = APP.state.getCurrentTask();
+      var usedLeaderIds = {};
+      if (currentTaskForLeaders) {
+        currentTaskForLeaders.posts.forEach(function (p) {
+          if (p.id === s.editingPostId) return;
+          if (p.leader && p.leader.t === 'ref' && p.leader.rt === 'leader' && p.leader.id) {
+            usedLeaderIds[p.leader.id] = true;
+          }
+        });
+      }
+      var availableLeaders = leaders.filter(function (l) { return !usedLeaderIds[l.id] || l.id === s.leaderId; });
       body = "<h4>שלב 2 מתוך 3: איש צוות מוביל</h4>" +
         "<select id=\"stepper-leader-select\">" +
         "<option value=\"\">-- בחר איש צוות --</option>" +
-        leaders.map(function (l) {
+        availableLeaders.map(function (l) {
           return "<option value=\"" + l.id + "\"" + (s.leaderId === l.id ? " selected" : "") + ">" + U.escapeHtml(l.name) + "</option>";
         }).join("") +
         "</select>" +
