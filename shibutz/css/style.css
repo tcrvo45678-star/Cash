@@ -187,6 +187,28 @@ tr.inactive-row { opacity: 0.5; }
 .login-box input { width: 100%; }
 .login-box button { width: 100%; margin-top: 4px; }
 
+/* ---- modal ---- */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(15, 25, 22, 0.5);
+  display: flex; align-items: center; justify-content: center; z-index: 200;
+  padding: 16px;
+}
+.modal-overlay[hidden] { display: none !important; }
+.modal-box {
+  background: var(--paper); border-radius: 14px; padding: 22px;
+  width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+  position: relative;
+}
+.modal-box-close {
+  position: absolute; top: 14px; left: 14px;
+  background: none; border: none; font-size: var(--fs-4);
+  cursor: pointer; color: var(--muted); padding: 0; width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+}
+.modal-box-close:hover { color: var(--ink); }
+.modal-box h2 { margin-top: 0; }
+
 @media (max-width: 600px) {
   .container { padding: 10px; }
   .req-grid { grid-template-columns: 1fr; }

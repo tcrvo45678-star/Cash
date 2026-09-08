@@ -1,6 +1,15 @@
 (function () {
   var taskActions;
 
+  function openPostModal() {
+    APP.modal.open(APP.render.postStepperHtml(), { onDismiss: cancelPostModal });
+  }
+
+  function cancelPostModal() {
+    APP.task.cancelStepper();
+    APP.modal.close();
+  }
+
   function rerenderPool(key) {
     if (key === 'trainees') APP.pools.renderTrainees();
     if (key === 'leaders') APP.pools.renderLeaders();
@@ -29,39 +38,13 @@
         APP.render.renderTaskTab();
       },
       'print': function () { window.print(); },
-      'add-post-start': function () { APP.task.startStepper(); APP.render.renderTaskTab(); },
-      'stepper-cancel': function () { APP.task.cancelStepper(); APP.render.renderTaskTab(); },
-      'stepper-next-1': function () {
-        APP.task.readStep1FromDom();
-        var s = APP.task.getStepper();
-        if (!s.farmerId && !s.newFarmerName.trim()) { alert('בחר חקלאי קיים או הזן שם לחקלאי חדש'); return; }
-        APP.task.stepperGoTo(2);
-        APP.render.renderTaskTab();
-      },
-      'stepper-next-2': function () {
-        APP.task.readStep2FromDom();
-        var s = APP.task.getStepper();
-        if (!s.leaderId) { alert('בחר איש צוות מוביל'); return; }
-        APP.task.stepperGoTo(3);
-        APP.render.renderTaskTab();
-      },
-      'stepper-back': function () {
-        var s = APP.task.getStepper();
-        if (s.step === 2) APP.task.readStep2FromDom();
-        if (s.step === 3) APP.task.readStep3FromDom();
-        APP.task.stepperGoTo(Math.max(1, s.step - 1));
-        APP.render.renderTaskTab();
-      },
-      'stepper-commit': function () {
-        APP.task.readStep3FromDom();
-        if (APP.task.commitStepper() !== false) APP.render.renderTaskTab();
-      },
+      'add-post-start': function () { APP.task.startStepper(); openPostModal(); },
       'edit-post': function (el) {
         var task = APP.state.getCurrentTask();
         var post = task.posts.filter(function (p) { return p.id === el.dataset.postId; })[0];
         if (!post) return;
         APP.task.startStepper(post);
-        APP.render.renderTaskTab();
+        openPostModal();
       },
       'delete-post': function (el) { APP.task.deletePost(el.dataset.postId); APP.render.renderTaskTab(); },
       'toggle-absent': function (el) { APP.task.toggleAbsent(el.dataset.traineeId); },
@@ -73,6 +56,75 @@
       },
       'remove-guest': function (el) { APP.task.removeGuest(el.dataset.guestId); APP.render.renderTaskTab(); }
     };
+  }
+
+  function wireModal() {
+    var overlay = document.getElementById('modal-overlay');
+    overlay.addEventListener('click', function (e) {
+      // Stepper/post actions
+      if (e.target.closest('[data-action="stepper-next-1"]')) {
+        APP.task.readStep1FromDom();
+        var s = APP.task.getStepper();
+        if (!s.farmerId && !s.newFarmerName.trim()) { alert('בחר חקלאי קיים או הזן שם לחקלאי חדש'); return; }
+        APP.task.stepperGoTo(2);
+        APP.modal.setContent(APP.render.postStepperHtml());
+        return;
+      }
+      if (e.target.closest('[data-action="stepper-next-2"]')) {
+        APP.task.readStep2FromDom();
+        var s = APP.task.getStepper();
+        if (!s.leaderId) { alert('בחר איש צוות מוביל'); return; }
+        APP.task.stepperGoTo(3);
+        APP.modal.setContent(APP.render.postStepperHtml());
+        return;
+      }
+      if (e.target.closest('[data-action="stepper-back"]')) {
+        var s = APP.task.getStepper();
+        if (s.step === 2) APP.task.readStep2FromDom();
+        if (s.step === 3) APP.task.readStep3FromDom();
+        APP.task.stepperGoTo(Math.max(1, s.step - 1));
+        APP.modal.setContent(APP.render.postStepperHtml());
+        return;
+      }
+      if (e.target.closest('[data-action="stepper-cancel"]')) {
+        cancelPostModal();
+        return;
+      }
+      if (e.target.closest('[data-action="stepper-commit"]')) {
+        APP.task.readStep3FromDom();
+        if (APP.task.commitStepper() !== false) {
+          APP.modal.close();
+          APP.render.renderTaskTab();
+        }
+        return;
+      }
+      // Template selection in stepper
+      if (e.target.id === 'stepper-template-select') {
+        APP.task.readStep1FromDom();
+        if (e.target.value) APP.task.applyTemplate(e.target.value);
+        APP.modal.setContent(APP.render.postStepperHtml());
+        return;
+      }
+      // Trainee modal actions
+      if (e.target.closest('[data-action="add-trainee-commit"]')) {
+        var name = document.getElementById('modal-trainee-name').value.trim();
+        if (!name) { alert('הזן שם'); return; }
+        var ratings = {
+          strength: parseInt(document.getElementById('modal-trainee-strength').value, 10),
+          dexterity: parseInt(document.getElementById('modal-trainee-dexterity').value, 10),
+          responsibility: parseInt(document.getElementById('modal-trainee-responsibility').value, 10),
+          leadership: parseInt(document.getElementById('modal-trainee-leadership').value, 10)
+        };
+        APP.state.addTrainee(name, ratings);
+        APP.modal.close();
+        APP.pools.renderTrainees();
+        return;
+      }
+      if (e.target.closest('[data-action="add-trainee-cancel"]')) {
+        APP.modal.close();
+        return;
+      }
+    });
   }
 
   function wireTaskTab() {
@@ -91,19 +143,6 @@
         var cell = APP.state.resolveCell(task, e.target.dataset.cellInput);
         if (cell) { cell.set(APP.state.textVal(e.target.value)); APP.state.save(); }
       }
-    });
-    el.addEventListener('change', function (e) {
-      // Only the template dropdown needs an immediate re-render (to show the
-      // template's requirement defaults before moving to step 3). Other
-      // stepper fields are read synchronously from the DOM at each
-      // next/back/commit click instead - re-rendering on every field's
-      // change event races with a click on another element in the same
-      // container (blur fires -> change fires -> re-render replaces the
-      // button mid-click), which corrupts the DOM.
-      if (e.target.id !== 'stepper-template-select') return;
-      APP.task.readStep1FromDom();
-      if (e.target.value) APP.task.applyTemplate(e.target.value);
-      APP.render.renderTaskTab();
     });
   }
 
@@ -141,17 +180,8 @@
       APP.state.save();
     });
     el.addEventListener('click', function (e) {
-      if (e.target.closest('[data-action="add-trainee"]')) {
-        var name = document.getElementById('new-trainee-name').value.trim();
-        if (!name) return;
-        var ratings = {
-          strength: parseInt(document.getElementById('new-trainee-strength').value, 10),
-          dexterity: parseInt(document.getElementById('new-trainee-dexterity').value, 10),
-          responsibility: parseInt(document.getElementById('new-trainee-responsibility').value, 10),
-          leadership: parseInt(document.getElementById('new-trainee-leadership').value, 10)
-        };
-        APP.state.addTrainee(name, ratings);
-        APP.pools.renderTrainees();
+      if (e.target.closest('[data-action="add-trainee-start"]')) {
+        APP.modal.open(APP.pools.addTraineeModalHtml(), { onDismiss: function () { APP.modal.close(); } });
         return;
       }
       var delBtn = e.target.closest('[data-action="delete-trainee"]');
@@ -349,6 +379,7 @@
       wireSimplePool('tab-farmers', 'farmers', APP.state.addFarmer);
       wireTemplates();
       wireSettings();
+      wireModal();
       wireTabs();
     }
 

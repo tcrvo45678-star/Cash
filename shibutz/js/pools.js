@@ -34,12 +34,7 @@ APP.pools = (function () {
       (list.length ? '' : '<tr><td colspan="7" class="empty-row">אין מתאמנים עדיין</td></tr>') +
       '</tbody></table></div>' +
       '<div class="row add-row">' +
-      '<input type="text" id="new-trainee-name" placeholder="שם מתאמן חדש">' +
-      '<select id="new-trainee-strength" title="חוזק">' + U.ratingOptions(4) + '</select>' +
-      '<select id="new-trainee-dexterity" title="זריזות">' + U.ratingOptions(4) + '</select>' +
-      '<select id="new-trainee-responsibility" title="אחראיות">' + U.ratingOptions(4) + '</select>' +
-      '<select id="new-trainee-leadership" title="הנהגה">' + U.ratingOptions(4) + '</select>' +
-      '<button class="btn-primary" data-action="add-trainee">הוסף מתאמן</button>' +
+      '<button class="btn-primary" data-action="add-trainee-start">+ הוסף מתאמן</button>' +
       '</div>' +
       '</div>';
   }
@@ -106,11 +101,37 @@ APP.pools = (function () {
       '</div>';
   }
 
+  function addTraineeModalHtml() {
+    return '<h2>הוסף מתאמן חדש</h2>' +
+      '<div style="display: flex; flex-direction: column; gap: 10px;">' +
+      '<label><span style="display: block; font-size: var(--fs-1); color: var(--muted); margin-bottom: 4px;">שם</span>' +
+      '<input type="text" id="modal-trainee-name" placeholder="שם המתאמן" style="width: 100%;">' +
+      '</label>' +
+      '<label><span style="display: block; font-size: var(--fs-1); color: var(--muted); margin-bottom: 4px;">חוזק פיזי</span>' +
+      '<select id="modal-trainee-strength" style="width: 100%;">' + U.ratingOptions(4) + '</select>' +
+      '</label>' +
+      '<label><span style="display: block; font-size: var(--fs-1); color: var(--muted); margin-bottom: 4px;">זריזות ידיים</span>' +
+      '<select id="modal-trainee-dexterity" style="width: 100%;">' + U.ratingOptions(4) + '</select>' +
+      '</label>' +
+      '<label><span style="display: block; font-size: var(--fs-1); color: var(--muted); margin-bottom: 4px;">אחראיות</span>' +
+      '<select id="modal-trainee-responsibility" style="width: 100%;">' + U.ratingOptions(4) + '</select>' +
+      '</label>' +
+      '<label><span style="display: block; font-size: var(--fs-1); color: var(--muted); margin-bottom: 4px;">הנהגה</span>' +
+      '<select id="modal-trainee-leadership" style="width: 100%;">' + U.ratingOptions(4) + '</select>' +
+      '</label>' +
+      '<div class="row" style="margin-top: 12px;">' +
+      '<button class="btn-secondary" data-action="add-trainee-cancel">בטל</button>' +
+      '<button class="btn-primary" data-action="add-trainee-commit">הוסף</button>' +
+      '</div>' +
+      '</div>';
+  }
+
   return {
     render: render,
     renderTrainees: renderTrainees,
     renderLeaders: renderLeaders,
     renderFarmers: renderFarmers,
-    renderTemplates: renderTemplates
+    renderTemplates: renderTemplates,
+    addTraineeModalHtml: addTraineeModalHtml
   };
 })();

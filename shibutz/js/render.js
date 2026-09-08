@@ -142,67 +142,67 @@ APP.render = (function () {
       '</div>';
   }
 
-  function stepperHtml() {
+  function postStepperHtml() {
     var s = APP.task.getStepper();
-    if (!s) return '';
+    if (!s) return "";
     var farmers = APP.state.get().pools.farmers;
     var leaders = APP.state.activeOnly(APP.state.get().pools.leaders);
     var templates = APP.state.get().pools.postTemplates;
-    var body = '';
+    var body = "";
 
     if (s.step === 1) {
-      body = '<h4>שלב 1 מתוך 3: חקלאי</h4>' +
-        '<select id="stepper-farmer-select">' +
-        '<option value="">-- בחר חקלאי קיים --</option>' +
+      body = "<h4>שלב 1 מתוך 3: חקלאי</h4>" +
+        "<select id=\"stepper-farmer-select\">" +
+        "<option value=\"\">-- בחר חקלאי קיים --</option>" +
         farmers.map(function (f) {
-          return '<option value="' + f.id + '"' + (s.farmerId === f.id ? ' selected' : '') + '>' + U.escapeHtml(f.name) + '</option>';
-        }).join('') +
-        '</select>' +
-        '<div class="or-sep">או הוסף חקלאי חדש:</div>' +
-        '<input type="text" id="stepper-farmer-new" placeholder="שם חקלאי חדש" value="' + U.escapeHtml(s.newFarmerName) + '">' +
+          return "<option value=\"" + f.id + "\"" + (s.farmerId === f.id ? " selected" : "") + ">" + U.escapeHtml(f.name) + "</option>";
+        }).join("") +
+        "</select>" +
+        "<div class=\"or-sep\">או הוסף חקלאי חדש:</div>" +
+        "<input type=\"text\" id=\"stepper-farmer-new\" placeholder=\"שם חקלאי חדש\" value=\"" + U.escapeHtml(s.newFarmerName) + "\">" +
         (templates.length ? (
-          '<div class="or-sep">תבנית עמדה (אופציונלי - ימלא ברירות מחדל בשלב 3):</div>' +
-          '<select id="stepper-template-select">' +
-          '<option value="">-- ללא תבנית --</option>' +
+          "<div class=\"or-sep\">תבנית עמדה (אופציונלי - ימלא ברירות מחדל בשלב 3):</div>" +
+          "<select id=\"stepper-template-select\">" +
+          "<option value=\"\">-- ללא תבנית --</option>" +
           templates.map(function (tp) {
-            return '<option value="' + tp.id + '"' + (s.templateId === tp.id ? ' selected' : '') + '>' + U.escapeHtml(tp.name) + '</option>';
-          }).join('') +
-          '</select>'
-        ) : '') +
-        '<div class="row">' +
-        '<button class="btn-secondary" data-action="stepper-cancel">בטל</button>' +
-        '<button class="btn-primary" data-action="stepper-next-1">הבא</button>' +
-        '</div>';
+            return "<option value=\"" + tp.id + "\"" + (s.templateId === tp.id ? " selected" : "") + ">" + U.escapeHtml(tp.name) + "</option>";
+          }).join("") +
+          "</select>"
+        ) : "") +
+        "<div class=\"row\">" +
+        "<button class=\"btn-secondary\" data-action=\"stepper-cancel\">בטל</button>" +
+        "<button class=\"btn-primary\" data-action=\"stepper-next-1\">הבא</button>" +
+        "</div>";
     } else if (s.step === 2) {
-      body = '<h4>שלב 2 מתוך 3: איש צוות מוביל</h4>' +
-        '<select id="stepper-leader-select">' +
-        '<option value="">-- בחר איש צוות --</option>' +
+      body = "<h4>שלב 2 מתוך 3: איש צוות מוביל</h4>" +
+        "<select id=\"stepper-leader-select\">" +
+        "<option value=\"\">-- בחר איש צוות --</option>" +
         leaders.map(function (l) {
-          return '<option value="' + l.id + '"' + (s.leaderId === l.id ? ' selected' : '') + '>' + U.escapeHtml(l.name) + '</option>';
-        }).join('') +
-        '</select>' +
-        '<div class="row">' +
-        '<button class="btn-secondary" data-action="stepper-back">חזור</button>' +
-        '<button class="btn-primary" data-action="stepper-next-2">הבא</button>' +
-        '</div>';
+          return "<option value=\"" + l.id + "\"" + (s.leaderId === l.id ? " selected" : "") + ">" + U.escapeHtml(l.name) + "</option>";
+        }).join("") +
+        "</select>" +
+        "<div class=\"row\">" +
+        "<button class=\"btn-secondary\" data-action=\"stepper-back\">חזור</button>" +
+        "<button class=\"btn-primary\" data-action=\"stepper-next-2\">הבא</button>" +
+        "</div>";
     } else {
       var r = s.requirements;
-      body = '<h4>שלב 3 מתוך 3: דרישות העמדה</h4>' +
-        '<div class="req-grid">' +
-        '<label>חוזק פיזי נדרש<select id="req-strength">' + U.ratingOptions(r.strength) + '</select></label>' +
-        '<label>זריזות ידיים נדרשת<select id="req-dexterity">' + U.ratingOptions(r.dexterity) + '</select></label>' +
-        '<label>אחראיות - רמה<select id="req-resp-level">' + U.ratingOptions(r.responsibilityMinCount.level) + '</select></label>' +
-        '<label>אחראיות - כמות מינ’<input type="number" min="0" id="req-resp-count" value="' + r.responsibilityMinCount.count + '"></label>' +
-        '<label>הנהגה - רמה<select id="req-lead-level">' + U.ratingOptions(r.leadershipMinCount.level) + '</select></label>' +
-        '<label>הנהגה - כמות מינ’<input type="number" min="0" id="req-lead-count" value="' + r.leadershipMinCount.count + '"></label>' +
-        '<label>מס’ עובדים נדרש בעמדה<input type="number" min="1" id="req-worker-count" value="' + s.workerCount + '"></label>' +
-        '</div>' +
-        '<div class="row">' +
-        '<button class="btn-secondary" data-action="stepper-back">חזור</button>' +
-        '<button class="btn-primary" data-action="stepper-commit">' + (s.editingPostId ? 'שמור שינויים' : 'הוסף עמדה') + '</button>' +
-        '</div>';
+      body = "<h4>שלב 3 מתוך 3: דרישות העמדה</h4>" +
+        "<div class=\"req-grid\">" +
+        "<label>חוזק פיזי נדרש<select id=\"req-strength\">" + U.ratingOptions(r.strength) + "</select></label>" +
+        "<label>זריזות ידיים נדרשת<select id=\"req-dexterity\">" + U.ratingOptions(r.dexterity) + "</select></label>" +
+        "<label>אחראיות - רמה<select id=\"req-resp-level\">" + U.ratingOptions(r.responsibilityMinCount.level) + "</select></label>" +
+        "<label>אחראיות - כמות מינ<input type=\"number\" min=\"0\" id=\"req-resp-count\" value=\"" + r.responsibilityMinCount.count + "\"></label>" +
+        "<label>הנהגה - רמה<select id=\"req-lead-level\">" + U.ratingOptions(r.leadershipMinCount.level) + "</select></label>" +
+        "<label>הנהגה - כמות מינ<input type=\"number\" min=\"0\" id=\"req-lead-count\" value=\"" + r.leadershipMinCount.count + "\"></label>" +
+        "<label>מספר עובדים נדרש בעמדה<input type=\"number\" min=\"1\" id=\"req-worker-count\" value=\"" + s.workerCount + "\"></label>" +
+        "</div>" +
+        "<div class=\"row\">" +
+        "<button class=\"btn-secondary\" data-action=\"stepper-back\">חזור</button>" +
+        "<button class=\"btn-primary\" data-action=\"stepper-commit\">" + (s.editingPostId ? "שמור שינויים" : "הוסף עמדה") + "</button>" +
+        "</div>";
     }
-    return '<div class="stepper-card">' + body + '</div>';
+    return "<div class=\"stepper-card\">" + body + "</div>";
   }
 
   function renderTaskCard(task) {
@@ -225,7 +225,6 @@ APP.render = (function () {
       '<h3>עמדות עבודה</h3>' +
       '<button class="btn-secondary" data-action="add-post-start">+ הוסף עמדה</button>' +
       '</div>' +
-      '<div id="post-stepper">' + stepperHtml() + '</div>' +
       '</div>' +
 
       '<div class="section no-print">' +
@@ -245,5 +244,5 @@ APP.render = (function () {
       '</div>';
   }
 
-  return { renderTaskTab: renderTaskTab };
+  return { renderTaskTab: renderTaskTab, postStepperHtml: postStepperHtml };
 })();
