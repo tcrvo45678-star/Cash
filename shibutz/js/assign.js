@@ -1,26 +1,31 @@
 window.APP = window.APP || {};
 
 // Pure, DOM-free auto-assignment algorithm.
-// runAutoAssign(task, pools) -> { postAssignments, spare }
+// runAutoAssign(task, pools) -> { postAssignments, spare, shortfalls }
 //
 // See /root/.claude/plans (or the project README) for the full design
 // writeup. Summary:
 //   1. Candidate pool = non-absent trainees + this task's ad-hoc guests
 //      + surplus team leaders (leaders not already chosen as a post's
 //      primary leader today).
-//   2. Posts are expanded into worker-slots.
-//   3. Quota traits (responsibility/leadership "at least N at level >= L")
-//      are satisfied first, in interleaved rounds across all posts at once
-//      (highest deficit-urgency wins each round), relaxing the level
-//      gradually when not enough candidates qualify.
-//   4. Remaining open slots are filled by repeatedly picking the single
-//      globally-cheapest (candidate, slot) pair by closeness to the post's
-//      strength/dexterity targets - this global-minimum-first approach is
-//      what keeps the result balanced across posts instead of dumping
-//      leftovers on the last one.
-//   5. Surplus leaders (untraited) fill any slots still open, in simple
+//   2. Quota traits (responsibility/leadership/gender "at least N at
+//      level >= L") are satisfied first, in interleaved rounds across
+//      all posts at once (highest deficit-urgency wins each round),
+//      relaxing the level gradually when not enough candidates qualify.
+//   3. Remaining candidates are filled by repeatedly picking the single
+//      globally-cheapest (candidate, post) pair by closeness to the
+//      post's strength/dexterity targets - this global-minimum-first
+//      approach is what keeps the result balanced across posts instead
+//      of dumping leftovers on the last one. Cost is evaluated per POST
+//      (not per open slot) since every open slot in the same post has
+//      identical cost - a post with workerCount == null ("flexible")
+//      has unlimited capacity and simply never drops out of contention.
+//   4. Surplus leaders (untraited) fill any posts still open, in simple
 //      pool order.
-//   6. Anyone left over goes to "spare" - always shown, never dropped.
+//   5. Anyone left over goes to "spare" - always shown, never dropped.
+//   6. Any post that couldn't reach its configured headcount or a hard
+//      quota is reported in `shortfalls` - assignment still happens for
+//      everyone who could be placed, nothing blocks on a shortage.
 APP.assign = (function () {
   function isGenderTrait(trait) { return trait === 'gender-male' || trait === 'gender-female'; }
 
@@ -41,6 +46,8 @@ APP.assign = (function () {
     return trainee.ratings[trait] >= level;
   }
 
+  function capacityFor(post) { return post.workerCount != null ? post.workerCount : Infinity; }
+
   function runAutoAssign(task, pools) {
     var trainees = APP.state.activeOnly(pools.trainees).filter(function (t) {
       return task.absentTraineeIds.indexOf(t.id) === -1;
@@ -56,9 +63,6 @@ APP.assign = (function () {
       return !leadersUsedAsPrimary[l.id];
     });
 
-    var postById = {};
-    task.posts.forEach(function (p) { postById[p.id] = p; });
-
     var farmersById = {};
     (pools.farmers || []).forEach(function (f) { farmersById[f.id] = f; });
     var preferredTraineeIdsByPost = {};
@@ -71,34 +75,23 @@ APP.assign = (function () {
     }
     var PREFERENCE_BONUS = 0.5;
 
-    // build slots, grouped by post. A post with workerCount == null is
-    // "flexible" - it has no fixed requirement, so it gets an upper-bound
-    // slot count (never actually reached in practice) and the balancing
-    // algorithm below decides how many it actually needs.
-    var totalCandidates = APP.state.activeOnly(pools.trainees).length + (task.extraGuests || []).length + APP.state.activeOnly(pools.leaders).length;
-    var slotsByPost = {};
-    task.posts.forEach(function (post) {
-      var arr = [];
-      var count = post.workerCount != null ? post.workerCount : totalCandidates;
-      for (var i = 0; i < count; i++) {
-        arr.push({ postId: post.id, index: i, assigned: null });
-      }
-      slotsByPost[post.id] = arr;
-    });
+    // assignedByPost[postId] grows as candidates are placed - no more
+    // pre-built slot objects, so cost/capacity work off the post itself.
+    var assignedByPost = {};
+    task.posts.forEach(function (post) { assignedByPost[post.id] = []; });
 
-    function openSlotsFor(postId) {
-      return slotsByPost[postId].filter(function (s) { return !s.assigned; });
-    }
+    function openCapacity(post) { return capacityFor(post) - assignedByPost[post.id].length; }
+    function hasOpenCapacity(post) { return openCapacity(post) > 0; }
     function quotaMetCount(postId, trait, level) {
-      return slotsByPost[postId].filter(function (s) {
-        return s.assigned && s.assigned.trainee && matchesTrait(s.assigned.trainee, trait, level);
+      return assignedByPost[postId].filter(function (c) {
+        return c.trainee && matchesTrait(c.trainee, trait, level);
       }).length;
     }
 
     var remaining = trainees.map(function (t) { return { id: t.id, trainee: t, kind: 'trainee' }; })
       .concat((task.extraGuests || []).map(function (g) { return { id: g.id, trainee: g, kind: 'guest' }; }));
 
-    // ---- Step 1: quota traits, interleaved by urgency, gradual relaxation ----
+    // ---- Phase 1: quota traits, interleaved by urgency, gradual relaxation ----
     var quotaTraits = ['responsibility', 'leadership', 'gender-male', 'gender-female'];
     var relaxedLevel = {};
     task.posts.forEach(function (post) {
@@ -114,8 +107,8 @@ APP.assign = (function () {
     while (remaining.length) {
       var best = null;
       task.posts.forEach(function (post) {
-        var open = openSlotsFor(post.id).length;
-        if (!open) return;
+        var open = openCapacity(post);
+        if (open <= 0) return;
         quotaTraits.forEach(function (trait) {
           var key = post.id + '|' + trait;
           if (unsatisfiable[key]) return;
@@ -125,12 +118,10 @@ APP.assign = (function () {
           var have = quotaMetCount(post.id, trait, level);
           var deficit = target - have;
           if (deficit <= 0) return;
-          // A flexible post's real open-slot count is an artificial upper
-          // bound (see slotsByPost above), not a meaningful scarcity signal -
-          // cap it at its own target so its urgency stays on the same scale
-          // as a fixed-size post, instead of being diluted to near-zero.
-          var effectiveOpen = post.workerCount != null ? open : Math.min(open, target);
-          var urgency = deficit / effectiveOpen;
+          // A flexible post's open capacity is Infinity - Math.min caps
+          // urgency at the post's own target so it stays on the same
+          // scale as a fixed-size post instead of being diluted to 0.
+          var urgency = deficit / Math.min(open, target);
           if (!best || urgency > best.urgency) {
             best = { post: post, trait: trait, level: level, urgency: urgency };
           }
@@ -155,54 +146,66 @@ APP.assign = (function () {
         return (isPreferredFor(b.id, best.post.id) ? 1 : 0) - (isPreferredFor(a.id, best.post.id) ? 1 : 0);
       });
       var chosen = candidates[0];
-      var slot = openSlotsFor(best.post.id)[0];
-      slot.assigned = chosen;
+      assignedByPost[best.post.id].push(chosen);
       remaining = remaining.filter(function (c) { return c.id !== chosen.id; });
     }
 
-    // ---- Step 2: continuous traits (strength/dexterity), global-minimum-first greedy ----
+    // ---- Phase 2: continuous traits (strength/dexterity), global-minimum-first greedy ----
+    // Cost only depends on the POST's requirements, so every open slot in
+    // the same post is identical - evaluate per post, not per slot. This
+    // is what keeps a flexible post's unlimited capacity cheap: the loop
+    // scales with the number of POSTS, not the number of slots.
     function closenessCost(trainee, requirements, isPreferred) {
       var cost = Math.abs(trainee.ratings.strength - requirements.strength) +
         Math.abs(trainee.ratings.dexterity - requirements.dexterity);
       return isPreferred ? cost - PREFERENCE_BONUS : cost;
     }
-    var allSlots = [];
-    task.posts.forEach(function (post) { slotsByPost[post.id].forEach(function (s) { allSlots.push(s); }); });
-
-    var openSlots = allSlots.filter(function (s) { return !s.assigned; });
-    while (remaining.length && openSlots.length) {
+    var openPosts = task.posts.filter(hasOpenCapacity);
+    while (remaining.length && openPosts.length) {
       var bestPair = null;
       remaining.forEach(function (c) {
-        openSlots.forEach(function (s) {
-          var cost = closenessCost(c.trainee, postById[s.postId].requirements, isPreferredFor(c.id, s.postId));
-          if (!bestPair || cost < bestPair.cost) bestPair = { candidate: c, slot: s, cost: cost };
+        openPosts.forEach(function (post) {
+          var cost = closenessCost(c.trainee, post.requirements, isPreferredFor(c.id, post.id));
+          if (!bestPair || cost < bestPair.cost) bestPair = { candidate: c, post: post, cost: cost };
         });
       });
-      bestPair.slot.assigned = bestPair.candidate;
+      assignedByPost[bestPair.post.id].push(bestPair.candidate);
       remaining = remaining.filter(function (c) { return c.id !== bestPair.candidate.id; });
-      openSlots = openSlots.filter(function (s) { return s !== bestPair.slot; });
+      openPosts = task.posts.filter(hasOpenCapacity);
     }
 
-    // ---- Step 3: surplus leaders fill whatever is left, simple pool order ----
-    openSlots = allSlots.filter(function (s) { return !s.assigned; });
+    // ---- Phase 3: surplus leaders fill whatever is left, simple pool order ----
     var leaderQueue = surplusLeaders.slice();
-    openSlots.forEach(function (s) {
-      if (!leaderQueue.length) return;
-      var l = leaderQueue.shift();
-      s.assigned = { id: l.id, leader: l };
-    });
+    while (leaderQueue.length) {
+      var openPost = task.posts.filter(hasOpenCapacity)[0];
+      if (!openPost) break;
+      assignedByPost[openPost.id].push({ id: leaderQueue[0].id, leader: leaderQueue[0] });
+      leaderQueue.shift();
+    }
 
     // ---- build output ----
     var postAssignments = {};
+    var shortfalls = [];
     task.posts.forEach(function (post) {
-      postAssignments[post.id] = {
-        workerIds: slotsByPost[post.id].map(function (s) {
-          if (!s.assigned) return APP.state.emptyVal();
-          if (s.assigned.trainee) return APP.state.refVal(s.assigned.kind || 'trainee', s.assigned.id);
-          if (s.assigned.leader) return APP.state.refVal('leader', s.assigned.id);
-          return APP.state.emptyVal();
-        })
-      };
+      var assigned = assignedByPost[post.id];
+      var workerIds = assigned.map(function (c) {
+        if (c.trainee) return APP.state.refVal(c.kind || 'trainee', c.id);
+        if (c.leader) return APP.state.refVal('leader', c.id);
+        return APP.state.emptyVal();
+      });
+      // Fixed-size posts still show an empty row for each unfilled slot;
+      // flexible posts show exactly what was assigned, nothing padded.
+      if (post.workerCount != null) {
+        while (workerIds.length < post.workerCount) workerIds.push(APP.state.emptyVal());
+        if (assigned.length < post.workerCount) {
+          shortfalls.push({ postId: post.id, type: 'headcount', missing: post.workerCount - assigned.length });
+        }
+      }
+      postAssignments[post.id] = { workerIds: workerIds };
+    });
+    Object.keys(unsatisfiable).forEach(function (key) {
+      var parts = key.split('|');
+      shortfalls.push({ postId: parts[0], type: 'quota', trait: parts[1] });
     });
 
     var spare = remaining.map(function (c) { return APP.state.refVal(c.kind || 'trainee', c.id); })
@@ -210,7 +213,7 @@ APP.assign = (function () {
 
     recomputePhoneCarriers(task, pools, postAssignments);
 
-    return { postAssignments: postAssignments, spare: spare };
+    return { postAssignments: postAssignments, spare: spare, shortfalls: shortfalls };
   }
 
   // Designates a phone carrier per post (highest responsibility among

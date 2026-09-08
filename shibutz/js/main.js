@@ -1,5 +1,6 @@
 (function () {
   var taskActions;
+  var debouncedSave = APP.util.debounce(function () { APP.state.save(); }, 400);
 
   function openPostModal() {
     APP.modal.open(APP.render.postStepperHtml(), { onDismiss: cancelPostModal });
@@ -55,11 +56,15 @@
         var date = dateInput ? dateInput.value : APP.state.todayISO();
         if (!date) return;
         var result = APP.task.createTaskForDate(date);
-        APP.render.renderTaskTab();
         if (result.wasNew && result.task.posts.length > 0) {
+          APP.render.renderTaskTab();
           APP.modal.open(APP.render.carriedPostsModalHtml(result.task), { onDismiss: function () { APP.modal.close(); } });
           return;
         }
+        if (result.task.posts.length > 0 && !result.task.assignment) {
+          autoAssignIfPosts();
+        }
+        APP.render.renderTaskTab();
         var task = APP.state.getCurrentTask();
         if (task && task.posts.length === 0) {
           APP.task.startStepper();
@@ -104,9 +109,12 @@
         var inp = document.getElementById('new-guest-name');
         var genderSel = document.getElementById('new-guest-gender');
         if (!inp || !inp.value.trim()) return;
-        APP.task.addGuest(inp.value.trim(), genderSel ? genderSel.value : 'm');
-        rerunAutoAssignIfNeeded();
+        var guest = APP.task.addGuest(inp.value.trim(), genderSel ? genderSel.value : 'm');
         APP.render.renderTaskTab();
+        var task = APP.state.getCurrentTask();
+        if (guest && task && task.posts.length) {
+          APP.modal.open(APP.render.assignGuestModalHtml(task, guest), { onDismiss: function () { APP.modal.close(); } });
+        }
       },
       'remove-guest': function (el) {
         APP.task.removeGuest(el.dataset.guestId);
@@ -114,6 +122,19 @@
         APP.render.renderTaskTab();
       }
     };
+  }
+
+  // Runs auto-assign unconditionally as long as the task has posts, even if
+  // no assignment exists yet - used when a task first becomes visible with
+  // posts already on it (carried over from the previous day), so people are
+  // filled in immediately instead of waiting for a manual "שבץ אוטומטית".
+  function autoAssignIfPosts() {
+    var task = APP.state.getCurrentTask();
+    if (task && task.posts.length) {
+      task.assignment = APP.assign.runAutoAssign(task, APP.state.get().pools);
+      task.updatedAt = Date.now();
+      APP.state.save();
+    }
   }
 
   function rerunAutoAssignIfNeeded() {
@@ -182,6 +203,23 @@
         }
         return;
       }
+      if (e.target.closest('[data-action="assign-guest-confirm"]')) {
+        var confirmBtn = e.target.closest('[data-action="assign-guest-confirm"]');
+        var guestId = confirmBtn.dataset.guestId;
+        var postSel = document.getElementById('assign-guest-post-select');
+        var chosenPostId = postSel ? postSel.value : '';
+        var guestTask = APP.state.getCurrentTask();
+        if (guestTask && chosenPostId) {
+          APP.state.assignGuestToPost(guestTask, guestId, chosenPostId);
+          APP.assign.recomputePhoneCarriers(guestTask, APP.state.get().pools, guestTask.assignment.postAssignments);
+          APP.state.save();
+        } else {
+          rerunAutoAssignIfNeeded();
+        }
+        APP.modal.close();
+        APP.render.renderTaskTab();
+        return;
+      }
       if (e.target.closest('[data-action="carried-posts-done"]')) {
         var carriedTask = APP.state.getCurrentTask();
         if (carriedTask) {
@@ -189,6 +227,7 @@
             if (!cb.checked) APP.task.deletePostNoConfirm(cb.dataset.postId);
           });
         }
+        autoAssignIfPosts();
         APP.modal.close();
         APP.render.renderTaskTab();
         var afterCarried = APP.state.getCurrentTask();
@@ -246,7 +285,7 @@
         var task = APP.state.getCurrentTask();
         if (!task) return;
         var cell = APP.state.resolveCell(task, e.target.dataset.cellInput);
-        if (cell) { cell.set(APP.state.textVal(e.target.value)); APP.state.save(); }
+        if (cell) { cell.set(APP.state.textVal(e.target.value)); debouncedSave(); }
       }
     });
   }
@@ -265,7 +304,7 @@
         var task = APP.state.getCurrentTask();
         if (!task) return;
         var cell = APP.state.resolveCell(task, e.target.dataset.cellInput);
-        if (cell) { cell.set(APP.state.textVal(e.target.value)); APP.state.save(); }
+        if (cell) { cell.set(APP.state.textVal(e.target.value)); debouncedSave(); }
       }
     });
   }
@@ -323,6 +362,7 @@
         t.ratings[f] = parseInt(e.target.value, 10);
       }
       APP.state.save();
+      APP.render.renderTaskTab();
     });
     el.addEventListener('click', function (e) {
       if (e.target.closest('[data-action="add-trainee-start"]')) {
@@ -352,6 +392,7 @@
       if (f === 'active') item.active = e.target.checked;
       else if (f) item[f] = e.target.value;
       APP.state.save();
+      APP.render.renderTaskTab();
     });
     el.addEventListener('click', function (e) {
       if (e.target.closest('[data-action="add-' + poolKey + '"]')) {

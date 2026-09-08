@@ -36,8 +36,8 @@ APP.task = (function () {
 
   function addGuest(name, gender) {
     var t = APP.state.getCurrentTask();
-    if (!t || !name) return;
-    APP.state.addGuestToTask(t, name, gender);
+    if (!t || !name) return null;
+    return APP.state.addGuestToTask(t, name, gender);
   }
 
   function removeGuest(guestId) {
@@ -70,11 +70,14 @@ APP.task = (function () {
   // ---------- 3-question add/edit-post stepper ----------
   function startStepper(existingPost) {
     if (existingPost) {
+      var existingFarmer = APP.state.findById(APP.state.get().pools.farmers, existingPost.farmerId);
       stepper = {
         editingPostId: existingPost.id,
         step: 1,
         farmerId: existingPost.farmerId,
         newFarmerName: '',
+        location: (existingFarmer && existingFarmer.location) || '',
+        jobType: (existingFarmer && existingFarmer.jobType) || '',
         leaderId: (existingPost.leader && existingPost.leader.t === 'ref' && existingPost.leader.rt === 'leader') ? existingPost.leader.id : '',
         transportMethod: existingPost.transportMethod || 'shuttle',
         templateId: existingPost.templateId || '',
@@ -87,6 +90,8 @@ APP.task = (function () {
         step: 1,
         farmerId: '',
         newFarmerName: '',
+        location: '',
+        jobType: '',
         leaderId: '',
         transportMethod: 'shuttle',
         templateId: '',
@@ -121,8 +126,12 @@ APP.task = (function () {
     var sel = document.getElementById('stepper-farmer-select');
     var newName = document.getElementById('stepper-farmer-new');
     var tplSel = document.getElementById('stepper-template-select');
+    var locationInp = document.getElementById('stepper-farmer-location');
+    var jobTypeInp = document.getElementById('stepper-farmer-jobtype');
     stepper.farmerId = sel ? sel.value : '';
     stepper.newFarmerName = newName ? newName.value : '';
+    stepper.location = locationInp ? locationInp.value : '';
+    stepper.jobType = jobTypeInp ? jobTypeInp.value : '';
     if (tplSel) stepper.templateId = tplSel.value || '';
   }
 
@@ -158,6 +167,11 @@ APP.task = (function () {
     if (!farmerId || !stepper.leaderId) {
       alert('יש לבחור חקלאי ואיש צוות מוביל לפני השמירה');
       return false;
+    }
+    var farmer = APP.state.findById(APP.state.get().pools.farmers, farmerId);
+    if (farmer) {
+      farmer.location = stepper.location || '';
+      farmer.jobType = stepper.jobType || '';
     }
     if (stepper.editingPostId) {
       var post = t.posts.filter(function (p) { return p.id === stepper.editingPostId; })[0];
