@@ -21,10 +21,23 @@ window.APP = window.APP || {};
 //      pool order.
 //   6. Anyone left over goes to "spare" - always shown, never dropped.
 APP.assign = (function () {
+  function isGenderTrait(trait) { return trait === 'gender-male' || trait === 'gender-female'; }
+
   function quotaTarget(post, trait) {
-    return trait === 'responsibility'
-      ? post.requirements.responsibilityMinCount.count
-      : post.requirements.leadershipMinCount.count;
+    if (trait === 'responsibility') return post.requirements.responsibilityMinCount.count;
+    if (trait === 'leadership') return post.requirements.leadershipMinCount.count;
+    var g = post.requirements.genderMinCount;
+    if (trait === 'gender-male') return (g && g.male) || 0;
+    if (trait === 'gender-female') return (g && g.female) || 0;
+    return 0;
+  }
+
+  // Gender has no 1-7 "level" to relax like a rating does - it either
+  // matches or it doesn't, so `level` is ignored for gender traits.
+  function matchesTrait(trainee, trait, level) {
+    if (trait === 'gender-male') return trainee.gender === 'm';
+    if (trait === 'gender-female') return trainee.gender === 'f';
+    return trainee.ratings[trait] >= level;
   }
 
   function runAutoAssign(task, pools) {
@@ -72,19 +85,21 @@ APP.assign = (function () {
     }
     function quotaMetCount(postId, trait, level) {
       return slotsByPost[postId].filter(function (s) {
-        return s.assigned && s.assigned.trainee && s.assigned.trainee.ratings[trait] >= level;
+        return s.assigned && s.assigned.trainee && matchesTrait(s.assigned.trainee, trait, level);
       }).length;
     }
 
     var remaining = trainees.map(function (t) { return { id: t.id, trainee: t }; });
 
     // ---- Step 1: quota traits, interleaved by urgency, gradual relaxation ----
-    var quotaTraits = ['responsibility', 'leadership'];
+    var quotaTraits = ['responsibility', 'leadership', 'gender-male', 'gender-female'];
     var relaxedLevel = {};
     task.posts.forEach(function (post) {
       relaxedLevel[post.id] = {
         responsibility: post.requirements.responsibilityMinCount.level,
-        leadership: post.requirements.leadershipMinCount.level
+        leadership: post.requirements.leadershipMinCount.level,
+        'gender-male': 1,
+        'gender-female': 1
       };
     });
     var unsatisfiable = {};
@@ -111,8 +126,10 @@ APP.assign = (function () {
       });
       if (!best) break;
 
-      var candidates = remaining.filter(function (c) { return c.trainee.ratings[best.trait] >= best.level; });
+      var candidates = remaining.filter(function (c) { return matchesTrait(c.trainee, best.trait, best.level); });
       if (!candidates.length) {
+        // Gender never relaxes (level stays 1, so this always falls straight
+        // to unsatisfiable) - only rating-based traits step down gradually.
         if (best.level > 1) {
           relaxedLevel[best.post.id][best.trait] -= 1;
         } else {
@@ -121,7 +138,7 @@ APP.assign = (function () {
         continue;
       }
       candidates.sort(function (a, b) {
-        var diff = b.trainee.ratings[best.trait] - a.trainee.ratings[best.trait];
+        var diff = isGenderTrait(best.trait) ? 0 : (b.trainee.ratings[best.trait] - a.trainee.ratings[best.trait]);
         if (diff !== 0) return diff;
         return (isPreferredFor(b.id, best.post.id) ? 1 : 0) - (isPreferredFor(a.id, best.post.id) ? 1 : 0);
       });
@@ -179,8 +196,34 @@ APP.assign = (function () {
     var spare = remaining.map(function (c) { return APP.state.refVal('trainee', c.id); })
       .concat(leaderQueue.map(function (l) { return APP.state.refVal('leader', l.id); }));
 
+    recomputePhoneCarriers(task, pools, postAssignments);
+
     return { postAssignments: postAssignments, spare: spare };
   }
 
-  return { runAutoAssign: runAutoAssign };
+  // Designates a phone carrier per post (highest responsibility among
+  // assigned trainees, cohort seniority as tiebreak; guests/leaders excluded).
+  // Called after runAutoAssign and again after any manual drag-swap, since a
+  // swap can move the current carrier out of a post without re-running the
+  // full algorithm.
+  function recomputePhoneCarriers(task, pools, postAssignments) {
+    var traineesById = {};
+    (pools.trainees || []).forEach(function (t) { traineesById[t.id] = t; });
+    task.posts.forEach(function (post) {
+      var pa = postAssignments[post.id];
+      if (!pa) return;
+      var candidates = pa.workerIds
+        .filter(function (w) { return w.t === 'ref' && w.rt === 'trainee'; })
+        .map(function (w) { return traineesById[w.id]; })
+        .filter(function (t) { return t && APP.util.cohortRank(t.cohort) > 0; });
+      candidates.sort(function (a, b) {
+        var diff = b.ratings.responsibility - a.ratings.responsibility;
+        if (diff !== 0) return diff;
+        return APP.util.cohortRank(b.cohort) - APP.util.cohortRank(a.cohort);
+      });
+      pa.phoneCarrierId = candidates.length ? candidates[0].id : null;
+    });
+  }
+
+  return { runAutoAssign: runAutoAssign, recomputePhoneCarriers: recomputePhoneCarriers };
 })();

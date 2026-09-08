@@ -52,8 +52,8 @@ APP.state = (function () {
   }
 
   // ---- pools ----
-  function addTrainee(name, ratings) {
-    var t = { id: APP.storage.uid('t'), name: name, ratings: ratings, active: true };
+  function addTrainee(name, ratings, cohort, gender) {
+    var t = { id: APP.storage.uid('t'), name: name, ratings: ratings, cohort: cohort || 'e', gender: gender || 'm', active: true };
     data.pools.trainees.push(t);
     save();
     return t;
@@ -145,12 +145,13 @@ APP.state = (function () {
     save();
   }
 
-  function addPost(task, farmerId, leaderId, requirements, workerCount, templateId) {
+  function addPost(task, farmerId, leaderId, requirements, workerCount, templateId, transportMethod) {
     var post = {
       id: APP.storage.uid('post'),
       templateId: templateId || null,
       farmerId: farmerId,
       leader: refVal('leader', leaderId),
+      transportMethod: transportMethod || 'shuttle',
       requirements: requirements,
       workerCount: workerCount,
       order: task.posts.length

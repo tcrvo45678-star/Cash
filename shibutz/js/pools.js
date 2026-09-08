@@ -17,11 +17,13 @@ APP.pools = (function () {
       '<h2>חניכים</h2>' +
       '<p class="muted">4 דירוגים קבועים בין 1-7 לכל חניך. משתתפים בשיבוץ האוטומטי (אלא אם נעדרים באותו יום).</p>' +
       '<div class="table-scroll"><table class="pool-table">' +
-      '<thead><tr><th>שם</th><th>חוזק</th><th>זריזות</th><th>אחראיות</th><th>הנהגה</th><th>פעיל</th><th></th></tr></thead>' +
+      '<thead><tr><th>שם</th><th>מחזור</th><th>מגדר</th><th>חוזק</th><th>זריזות</th><th>אחראיות</th><th>הנהגה</th><th>פעיל</th><th></th></tr></thead>' +
       '<tbody>' +
       list.map(function (t) {
         return '<tr data-id="' + t.id + '">' +
           '<td><input class="pool-input" data-field="name" aria-label="שם" value="' + U.escapeHtml(t.name) + '"></td>' +
+          '<td><select data-field="cohort" aria-label="מחזור">' + U.cohortOptions(t.cohort) + '</select></td>' +
+          '<td><select data-field="gender" aria-label="מגדר">' + U.genderOptions(t.gender) + '</select></td>' +
           '<td><select data-field="strength" aria-label="חוזק">' + U.ratingOptions(t.ratings.strength) + '</select></td>' +
           '<td><select data-field="dexterity" aria-label="זריזות">' + U.ratingOptions(t.ratings.dexterity) + '</select></td>' +
           '<td><select data-field="responsibility" aria-label="אחראיות">' + U.ratingOptions(t.ratings.responsibility) + '</select></td>' +
@@ -30,7 +32,7 @@ APP.pools = (function () {
           '<td><button class="btn-tiny btn-danger" data-action="delete-trainee">מחק</button></td>' +
           '</tr>';
       }).join('') +
-      (list.length ? '' : '<tr><td colspan="7" class="empty-row">אין חניכים עדיין</td></tr>') +
+      (list.length ? '' : '<tr><td colspan="9" class="empty-row">אין חניכים עדיין</td></tr>') +
       '</tbody></table></div>' +
       '<div class="row add-row">' +
       '<button class="btn-primary" data-action="add-trainee-start">+ הוסף חניך</button>' +
@@ -122,6 +124,12 @@ APP.pools = (function () {
       '<div style="display: flex; flex-direction: column; gap: 10px;">' +
       '<label><span style="display: block; font-size: var(--fs-1); color: var(--muted); margin-bottom: 4px;">שם</span>' +
       '<input type="text" id="modal-trainee-name" placeholder="שם החניך" style="width: 100%;">' +
+      '</label>' +
+      '<label><span style="display: block; font-size: var(--fs-1); color: var(--muted); margin-bottom: 4px;">מחזור</span>' +
+      '<select id="modal-trainee-cohort" style="width: 100%;">' + U.cohortOptions('e') + '</select>' +
+      '</label>' +
+      '<label><span style="display: block; font-size: var(--fs-1); color: var(--muted); margin-bottom: 4px;">מגדר</span>' +
+      '<select id="modal-trainee-gender" style="width: 100%;">' + U.genderOptions('m') + '</select>' +
       '</label>' +
       '<label><span style="display: block; font-size: var(--fs-1); color: var(--muted); margin-bottom: 4px;">חוזק פיזי</span>' +
       '<select id="modal-trainee-strength" style="width: 100%;">' + U.ratingOptions(4) + '</select>' +

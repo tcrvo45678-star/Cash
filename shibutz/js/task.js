@@ -70,8 +70,9 @@ APP.task = (function () {
         farmerId: existingPost.farmerId,
         newFarmerName: '',
         leaderId: (existingPost.leader && existingPost.leader.t === 'ref' && existingPost.leader.rt === 'leader') ? existingPost.leader.id : '',
+        transportMethod: existingPost.transportMethod || 'shuttle',
         templateId: existingPost.templateId || '',
-        requirements: JSON.parse(JSON.stringify(existingPost.requirements)),
+        requirements: Object.assign({ genderMinCount: { male: 0, female: 0 } }, JSON.parse(JSON.stringify(existingPost.requirements))),
         workerCount: existingPost.workerCount
       };
     } else {
@@ -81,11 +82,13 @@ APP.task = (function () {
         farmerId: '',
         newFarmerName: '',
         leaderId: '',
+        transportMethod: 'shuttle',
         templateId: '',
         requirements: {
           strength: 4, dexterity: 4,
           responsibilityMinCount: { level: 5, count: 1 },
-          leadershipMinCount: { level: 5, count: 1 }
+          leadershipMinCount: { level: 5, count: 1 },
+          genderMinCount: { male: 0, female: 0 }
         },
         workerCount: 3
       };
@@ -121,6 +124,8 @@ APP.task = (function () {
     if (!stepper) return;
     var sel = document.getElementById('stepper-leader-select');
     stepper.leaderId = sel ? sel.value : '';
+    var transportSel = document.getElementById('stepper-transport-select');
+    stepper.transportMethod = transportSel ? transportSel.value : 'shuttle';
   }
 
   function readStep3FromDom() {
@@ -131,6 +136,8 @@ APP.task = (function () {
     stepper.requirements.responsibilityMinCount.count = parseInt(document.getElementById('req-resp-count').value, 10) || 0;
     stepper.requirements.leadershipMinCount.level = parseInt(document.getElementById('req-lead-level').value, 10);
     stepper.requirements.leadershipMinCount.count = parseInt(document.getElementById('req-lead-count').value, 10) || 0;
+    stepper.requirements.genderMinCount.male = parseInt(document.getElementById('req-gender-male').value, 10) || 0;
+    stepper.requirements.genderMinCount.female = parseInt(document.getElementById('req-gender-female').value, 10) || 0;
     stepper.workerCount = parseInt(document.getElementById('req-worker-count').value, 10) || 1;
   }
 
@@ -150,6 +157,7 @@ APP.task = (function () {
       if (post) {
         post.farmerId = farmerId;
         post.leader = APP.state.refVal('leader', stepper.leaderId);
+        post.transportMethod = stepper.transportMethod;
         post.requirements = stepper.requirements;
         post.workerCount = stepper.workerCount;
         post.templateId = stepper.templateId || null;
@@ -157,7 +165,7 @@ APP.task = (function () {
         APP.state.save();
       }
     } else {
-      APP.state.addPost(t, farmerId, stepper.leaderId, stepper.requirements, stepper.workerCount, stepper.templateId || null);
+      APP.state.addPost(t, farmerId, stepper.leaderId, stepper.requirements, stepper.workerCount, stepper.templateId || null, stepper.transportMethod);
     }
     stepper = null;
     return true;

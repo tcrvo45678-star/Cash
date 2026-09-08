@@ -112,6 +112,7 @@ button {
 .post-req-list { display: flex; flex-direction: column; gap: 14px; }
 .post-req-card { border: 1px solid var(--divider); border-radius: 10px; padding: 14px 16px; }
 .post-req-card h3 { color: var(--bottle); margin-bottom: 8px; }
+.post-req-card h4 { color: var(--muted); font-size: var(--fs-2); margin: 10px 0 6px; border-top: 1px dashed var(--divider); padding-top: 8px; }
 .post-req-dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px 16px; }
 .post-req-dl dt { font-size: var(--fs-1); color: var(--muted); }
 .post-req-dl dd { font-size: var(--fs-2); }
@@ -138,6 +139,7 @@ button {
 .assign-table th { background: var(--icon-bg); min-width: 140px; padding: 6px; }
 .post-header { padding: 6px; border-radius: 6px; }
 .post-leader-name { font-weight: 700; color: var(--bottle); text-align: center; font-size: var(--fs-3); }
+.post-farmer-name { font-size: var(--fs-1); color: var(--muted); text-align: center; font-weight: 600; }
 .grid-cell { padding: 10px 8px; text-align: center; min-height: 20px; }
 .empty-cell { background: repeating-linear-gradient(45deg, transparent, transparent 8px, var(--divider) 8px, var(--divider) 9px); }
 
@@ -146,9 +148,16 @@ button {
 .spare-list { display: flex; flex-wrap: wrap; gap: 8px; }
 .spare-chip { background: white; border: 1px solid var(--gold); padding: 6px 12px; border-radius: 16px; font-size: var(--fs-2); }
 
+/* ---- cohort colors ---- */
+.cohort-b { background: #F7C99C; }      /* כתום - מחזור ב / יב */
+.cohort-c { background: #D9C6EC; }      /* סגול - מחזור ג / יא */
+.cohort-d { background: #BFD7EA; }      /* כחול - מחזור ד / י */
+.cohort-e { background: #CDEAC0; }      /* ירוק בהיר - מחזור ה / ט */
+.cohort-guest { background: #FCEB9A; }  /* צהוב - אורח */
+
 /* ---- generic swappable cell ---- */
 .cell {
-  touch-action: none;
+  touch-action: pan-y;
   -webkit-touch-callout: none;
   user-select: none;
   cursor: grab;

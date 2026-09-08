@@ -16,6 +16,7 @@ APP.render = (function () {
         APP.state.swapCells(t, a, b);
         if (t.assignment) {
           t.assignment.spare = t.assignment.spare.filter(function (v) { return v.t !== 'empty'; });
+          APP.assign.recomputePhoneCarriers(t, APP.state.get().pools, t.assignment.postAssignments);
           APP.state.save();
         }
         renderTaskTab();
@@ -54,7 +55,9 @@ APP.render = (function () {
   function postHeaderHtml(task, post) {
     var cellId = 'post:' + post.id + ':header';
     var name = APP.state.cellDisplay(post.leader, task);
+    var farmer = APP.state.findById(APP.state.get().pools.farmers, post.farmerId);
     return '<div class="cell post-header" tabindex="0" data-cell-id="' + cellId + '">' +
+      '<div class="post-farmer-name">' + U.escapeHtml(farmer ? farmer.name : '(ללא חקלאי)') + '</div>' +
       '<div class="post-leader-name">' + U.escapeHtml(name || '(ריק)') + '</div>' +
       '</div>';
   }
@@ -87,7 +90,13 @@ APP.render = (function () {
         var val = (pa && pa.workerIds[i]) ? pa.workerIds[i] : APP.state.emptyVal();
         var text = APP.state.cellDisplay(val, task);
         var kindClass = val.t === 'ref' ? (' kind-' + val.rt) : '';
-        return '<td class="grid-cell cell' + kindClass + '" tabindex="0" data-cell-id="' + cellId + '">' +
+        var cohortClass = '';
+        if (val.t === 'ref' && val.rt === 'trainee') {
+          var tr = APP.state.findById(APP.state.get().pools.trainees, val.id);
+          if (tr && tr.cohort) cohortClass = ' cohort-' + tr.cohort;
+          if (pa && pa.phoneCarrierId && pa.phoneCarrierId === val.id) text += ' 📱';
+        }
+        return '<td class="grid-cell cell' + kindClass + cohortClass + '" tabindex="0" data-cell-id="' + cellId + '">' +
           '<span class="cell-text">' + U.escapeHtml(text) + '</span>' +
           '</td>';
       }).join('') + '</tr>';
@@ -102,7 +111,12 @@ APP.render = (function () {
   function spareHtml(task) {
     if (!task.assignment || !task.assignment.spare.length) return '';
     var items = task.assignment.spare.map(function (v, i) {
-      return '<div class="cell spare-chip" tabindex="0" data-cell-id="spare:' + i + '">' +
+      var cohortClass = '';
+      if (v.t === 'ref' && v.rt === 'trainee') {
+        var tr = APP.state.findById(APP.state.get().pools.trainees, v.id);
+        if (tr && tr.cohort) cohortClass = ' cohort-' + tr.cohort;
+      }
+      return '<div class="cell spare-chip' + cohortClass + '" tabindex="0" data-cell-id="spare:' + i + '">' +
         U.escapeHtml(APP.state.cellDisplay(v, task)) + '</div>';
     }).join('');
     return '<div class="spare-panel"><h3>ספייר (עודפים)</h3><div class="spare-list">' + items + '</div></div>';
@@ -163,6 +177,11 @@ APP.render = (function () {
           return "<option value=\"" + l.id + "\"" + (s.leaderId === l.id ? " selected" : "") + ">" + U.escapeHtml(l.name) + "</option>";
         }).join("") +
         "</select>" +
+        "<div class=\"or-sep\">דרך הגעה:</div>" +
+        "<select id=\"stepper-transport-select\">" +
+        "<option value=\"shuttle\"" + (s.transportMethod === "shuttle" ? " selected" : "") + ">הסעה</option>" +
+        "<option value=\"transporter\"" + (s.transportMethod === "transporter" ? " selected" : "") + ">טרנספורטר</option>" +
+        "</select>" +
         "<div class=\"row\">" +
         "<button class=\"btn-secondary\" data-action=\"stepper-back\">חזור</button>" +
         "<button class=\"btn-primary\" data-action=\"stepper-next-2\">הבא</button>" +
@@ -178,6 +197,8 @@ APP.render = (function () {
         "<label>הנהגה - רמה<select id=\"req-lead-level\">" + U.ratingOptions(r.leadershipMinCount.level) + "</select></label>" +
         "<label>הנהגה - כמות מינ<input type=\"number\" min=\"0\" id=\"req-lead-count\" value=\"" + r.leadershipMinCount.count + "\"></label>" +
         "<label>מספר עובדים נדרש בעמדה<input type=\"number\" min=\"1\" id=\"req-worker-count\" value=\"" + s.workerCount + "\"></label>" +
+        "<label>מינ' בנים<input type=\"number\" min=\"0\" id=\"req-gender-male\" value=\"" + r.genderMinCount.male + "\"></label>" +
+        "<label>מינ' בנות<input type=\"number\" min=\"0\" id=\"req-gender-female\" value=\"" + r.genderMinCount.female + "\"></label>" +
         "</div>" +
         "<div class=\"row\">" +
         "<button class=\"btn-secondary\" data-action=\"stepper-back\">חזור</button>" +
@@ -210,16 +231,16 @@ APP.render = (function () {
       '</div>' +
 
       '<div class="section no-print">' +
-      '<h3>נעדרים היום</h3>' + absentPanel(task) +
-      '</div>' +
-
-      '<div class="section no-print">' +
       '<h3>אורחים</h3>' + guestsHtml(task) +
       '</div>' +
 
       '<div class="section">' +
       gridHtml(task) +
       spareHtml(task) +
+      '</div>' +
+
+      '<div class="section no-print">' +
+      '<h3>נעדרים היום</h3>' + absentPanel(task) +
       '</div>' +
 
       '<p class="drag-hint no-print">טיפ: אפשר לגרור כל תא (שם עובד או כותרת עמדה) ולהחליף אותו עם כל תא אחר.</p>' +
@@ -239,6 +260,12 @@ APP.render = (function () {
     var farmer = APP.state.findById(APP.state.get().pools.farmers, post.farmerId);
     var r = post.requirements;
     var leaderName = APP.state.cellDisplay(post.leader, task);
+    var pa = task.assignment && task.assignment.postAssignments[post.id];
+    var phoneCarrierName = '-';
+    if (pa && pa.phoneCarrierId) {
+      var carrier = APP.state.findById(APP.state.get().pools.trainees, pa.phoneCarrierId);
+      phoneCarrierName = carrier ? carrier.name : '-';
+    }
     return '<div class="post-req-card">' +
       '<h3>' + U.escapeHtml(leaderName || '(ריק)') + '</h3>' +
       '<dl class="post-req-dl">' +
@@ -250,7 +277,38 @@ APP.render = (function () {
       '<div><dt>זריזות</dt><dd>' + r.dexterity + '</dd></div>' +
       '<div><dt>אחראיות</dt><dd>≥' + r.responsibilityMinCount.level + ' x' + r.responsibilityMinCount.count + '</dd></div>' +
       '<div><dt>הנהגה</dt><dd>≥' + r.leadershipMinCount.level + ' x' + r.leadershipMinCount.count + '</dd></div>' +
-      '</dl></div>';
+      '<div><dt>דרך הגעה</dt><dd>' + (post.transportMethod === 'transporter' ? 'טרנספורטר' : 'הסעה') + '</dd></div>' +
+      '<div><dt>אחראי טלפון</dt><dd>' + U.escapeHtml(phoneCarrierName) + '</dd></div>' +
+      '</dl>' +
+      postActualSummaryHtml(task, post) +
+      '</div>';
+  }
+
+  function postActualSummaryHtml(task, post) {
+    var pa = task.assignment && task.assignment.postAssignments[post.id];
+    var trainees = pa ? pa.workerIds
+      .filter(function (w) { return w.t === 'ref' && w.rt === 'trainee'; })
+      .map(function (w) { return APP.state.findById(APP.state.get().pools.trainees, w.id); })
+      .filter(Boolean) : [];
+    if (!trainees.length) {
+      return '<h4>בפועל</h4><p class="muted">טרם שובץ</p>';
+    }
+    var r = post.requirements;
+    var sumStrength = 0, sumDexterity = 0, respCount = 0, leadCount = 0;
+    trainees.forEach(function (t) {
+      sumStrength += t.ratings.strength;
+      sumDexterity += t.ratings.dexterity;
+      if (t.ratings.responsibility >= r.responsibilityMinCount.level) respCount++;
+      if (t.ratings.leadership >= r.leadershipMinCount.level) leadCount++;
+    });
+    var avgStrength = (sumStrength / trainees.length).toFixed(1);
+    var avgDexterity = (sumDexterity / trainees.length).toFixed(1);
+    return '<h4>בפועל</h4><dl class="post-req-dl">' +
+      '<div><dt>חוזק ממוצע</dt><dd>' + avgStrength + '</dd></div>' +
+      '<div><dt>זריזות ממוצעת</dt><dd>' + avgDexterity + '</dd></div>' +
+      '<div><dt>אחראיות</dt><dd>' + respCount + ' מתוך ' + trainees.length + '</dd></div>' +
+      '<div><dt>הנהגה</dt><dd>' + leadCount + ' מתוך ' + trainees.length + '</dd></div>' +
+      '</dl>';
   }
 
   function renderPostRequirementsTab() {

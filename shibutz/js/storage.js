@@ -24,6 +24,10 @@ APP.storage = (function () {
     data.auth = data.auth || { passwordHash: null };
     data.pools = data.pools || {};
     data.pools.trainees = data.pools.trainees || [];
+    data.pools.trainees.forEach(function (t) {
+      if (!t.cohort) t.cohort = 'e';
+      if (!t.gender) t.gender = 'm';
+    });
     data.pools.leaders = data.pools.leaders || [];
     data.pools.farmers = data.pools.farmers || [];
     data.pools.farmers.forEach(function (f) {

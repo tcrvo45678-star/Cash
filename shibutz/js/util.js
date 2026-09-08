@@ -22,5 +22,33 @@ APP.util = (function () {
     return out;
   }
 
-  return { escapeHtml: escapeHtml, qs: qs, qsa: qsa, ratingOptions: ratingOptions };
+  var COHORTS = [
+    { key: 'b', label: 'מחזור ב (יב)', rank: 4 },
+    { key: 'c', label: 'מחזור ג (יא)', rank: 3 },
+    { key: 'd', label: 'מחזור ד (י)', rank: 2 },
+    { key: 'e', label: 'מחזור ה (ט)', rank: 1 },
+    { key: 'guest', label: 'אורח', rank: 0 }
+  ];
+  function cohortOptions(selected) {
+    return COHORTS.map(function (c) {
+      return '<option value="' + c.key + '"' + (c.key === selected ? ' selected' : '') + '>' + c.label + '</option>';
+    }).join('');
+  }
+  function cohortRank(key) {
+    var c = COHORTS.filter(function (x) { return x.key === key; })[0];
+    return c ? c.rank : 0;
+  }
+
+  function genderOptions(selected) {
+    var opts = [{ key: 'm', label: 'בן' }, { key: 'f', label: 'בת' }];
+    return opts.map(function (o) {
+      return '<option value="' + o.key + '"' + (o.key === selected ? ' selected' : '') + '>' + o.label + '</option>';
+    }).join('');
+  }
+
+  return {
+    escapeHtml: escapeHtml, qs: qs, qsa: qsa, ratingOptions: ratingOptions,
+    COHORTS: COHORTS, cohortOptions: cohortOptions, cohortRank: cohortRank,
+    genderOptions: genderOptions
+  };
 })();

@@ -87,7 +87,16 @@
         openPostModal();
       },
       'delete-post': function (el) { APP.task.deletePost(el.dataset.postId); APP.render.renderTaskTab(); },
-      'toggle-absent': function (el) { APP.task.toggleAbsent(el.dataset.traineeId); },
+      'toggle-absent': function (el) {
+        APP.task.toggleAbsent(el.dataset.traineeId);
+        var task = APP.state.getCurrentTask();
+        if (task && task.assignment) {
+          task.assignment = APP.assign.runAutoAssign(task, APP.state.get().pools);
+          task.updatedAt = Date.now();
+          APP.state.save();
+        }
+        APP.render.renderTaskTab();
+      },
       'add-guest': function () {
         var inp = document.getElementById('new-guest-name');
         if (!inp || !inp.value.trim()) return;
@@ -165,7 +174,9 @@
           responsibility: parseInt(document.getElementById('modal-trainee-responsibility').value, 10),
           leadership: parseInt(document.getElementById('modal-trainee-leadership').value, 10)
         };
-        APP.state.addTrainee(name, ratings);
+        var cohort = document.getElementById('modal-trainee-cohort').value;
+        var gender = document.getElementById('modal-trainee-gender').value;
+        APP.state.addTrainee(name, ratings, cohort, gender);
         APP.modal.close();
         APP.pools.renderTrainees();
         return;
@@ -272,6 +283,8 @@
       var f = e.target.dataset.field;
       if (f === 'name') t.name = e.target.value;
       else if (f === 'active') t.active = e.target.checked;
+      else if (f === 'cohort') t.cohort = e.target.value;
+      else if (f === 'gender') t.gender = e.target.value;
       else if (['strength', 'dexterity', 'responsibility', 'leadership'].indexOf(f) >= 0) {
         t.ratings[f] = parseInt(e.target.value, 10);
       }
