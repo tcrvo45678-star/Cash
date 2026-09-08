@@ -239,7 +239,8 @@ APP.state = (function () {
     for (var i = 0; i < arr.length; i++) {
       if (arr[i].t === 'empty') return i;
     }
-    if (post.workerCount != null && arr.length >= post.workerCount) {
+    var cap = APP.assign.postCapacity(post);
+    if (cap != null && arr.length >= cap) {
       post.workerCount += 1;
     }
     return arr.length;

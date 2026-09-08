@@ -99,7 +99,10 @@ APP.render = (function () {
 
   function taskMaxSlots(task) {
     return task.assignment
-      ? Math.max.apply(null, task.posts.map(function (p) { return p.workerCount != null ? p.workerCount : assignedCountFor(task, p); }).concat([0]))
+      ? Math.max.apply(null, task.posts.map(function (p) {
+          var cap = APP.assign.postCapacity(p);
+          return cap != null ? cap : assignedCountFor(task, p);
+        }).concat([0]))
       : 0;
   }
 
@@ -107,7 +110,8 @@ APP.render = (function () {
   // mobile per-post cards (postCardsHtml) - keeps cohort/phone-badge/kind
   // logic in one place so the two layouts never drift apart.
   function slotCellData(task, post, i) {
-    if (post.workerCount != null && i >= post.workerCount) return null;
+    var cap = APP.assign.postCapacity(post);
+    if (cap != null && i >= cap) return null;
     var cellId = 'post:' + post.id + ':slot:' + i;
     var pa = task.assignment.postAssignments[post.id];
     var val = (pa && pa.workerIds[i]) ? pa.workerIds[i] : APP.state.emptyVal();
@@ -237,6 +241,7 @@ APP.render = (function () {
     var body = "";
 
     if (s.step === 1) {
+      var jobTemplates = APP.state.activeOnly(APP.state.get().pools.postTemplates);
       body = "<h4>שלב 1 מתוך 3: חקלאי</h4>" +
         "<select id=\"stepper-farmer-select\">" +
         "<option value=\"\">-- בחר חקלאי קיים --</option>" +
@@ -250,6 +255,13 @@ APP.render = (function () {
         "<input type=\"text\" id=\"stepper-farmer-location\" placeholder=\"מיקום\" value=\"" + U.escapeHtml(s.location || "") + "\">" +
         "<div class=\"or-sep\">סוג עבודה:</div>" +
         "<input type=\"text\" id=\"stepper-farmer-jobtype\" placeholder=\"סוג עבודה\" value=\"" + U.escapeHtml(s.jobType || "") + "\">" +
+        "<div class=\"or-sep\">עבודה קבועה (אופציונלי - ממלא את הדרישות אוטומטית):</div>" +
+        "<select id=\"stepper-template-select\">" +
+        "<option value=\"\">-- ללא / התאמה אישית --</option>" +
+        jobTemplates.map(function (tpl) {
+          return "<option value=\"" + tpl.id + "\"" + (s.templateId === tpl.id ? " selected" : "") + ">" + U.escapeHtml(tpl.name) + "</option>";
+        }).join("") +
+        "</select>" +
         "<div class=\"row\">" +
         "<button class=\"btn-secondary\" data-action=\"stepper-cancel\">בטל</button>" +
         "<button class=\"btn-primary\" data-action=\"stepper-next-1\">הבא</button>" +

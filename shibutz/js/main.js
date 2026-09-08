@@ -294,6 +294,30 @@
         APP.modal.close();
         return;
       }
+      // Job-template modal actions
+      if (e.target.closest('[data-action="add-jobtemplate-commit"]')) {
+        var tplName = document.getElementById('modal-jobtemplate-name').value.trim();
+        if (!tplName) { alert('הזן שם לעבודה'); return; }
+        var tplWorkerCountStr = document.getElementById('modal-jobtemplate-workercount').value;
+        APP.state.addPostTemplate({
+          name: tplName,
+          defaultWorkerCount: tplWorkerCountStr ? parseInt(tplWorkerCountStr, 10) : null,
+          defaultRequirements: {
+            strength: parseInt(document.getElementById('modal-jobtemplate-strength').value, 10),
+            dexterity: parseInt(document.getElementById('modal-jobtemplate-dexterity').value, 10),
+            responsibilityMinCount: { level: 5, count: 0 },
+            leadershipMinCount: { level: 5, count: 0 },
+            genderMinCount: { male: 0, female: 0 }
+          }
+        });
+        APP.modal.close();
+        APP.pools.renderJobTemplates();
+        return;
+      }
+      if (e.target.closest('[data-action="add-jobtemplate-cancel"]')) {
+        APP.modal.close();
+        return;
+      }
       if (e.target.closest('[data-action="task-details-close"]')) {
         APP.modal.close();
         return;
@@ -322,6 +346,11 @@
         if (!task) return;
         var cell = APP.state.resolveCell(task, e.target.dataset.cellInput);
         if (cell) { cell.set(APP.state.textVal(e.target.value)); debouncedSave(); }
+      }
+    });
+    overlay.addEventListener('change', function (e) {
+      if (e.target && e.target.id === 'stepper-template-select') {
+        APP.task.applyTemplate(e.target.value);
       }
     });
   }
@@ -424,6 +453,44 @@
         d.pools.trainees = d.pools.trainees.filter(function (x) { return x.id !== tr.dataset.id; });
         APP.state.save();
         renderTraineesTabGated();
+      }
+    });
+  }
+
+  function wireJobTemplates() {
+    var el = document.getElementById('tab-jobtemplates');
+    el.addEventListener('change', function (e) {
+      var tr = e.target.closest('tr[data-id]');
+      if (!tr) return;
+      var tpl = APP.state.findById(APP.state.get().pools.postTemplates, tr.dataset.id);
+      if (!tpl) return;
+      var r = tpl.defaultRequirements;
+      var f = e.target.dataset.field;
+      if (f === 'name') tpl.name = e.target.value;
+      else if (f === 'active') tpl.active = e.target.checked;
+      else if (f === 'strength' || f === 'dexterity') r[f] = parseInt(e.target.value, 10);
+      else if (f === 'resp-level') r.responsibilityMinCount.level = parseInt(e.target.value, 10);
+      else if (f === 'resp-count') r.responsibilityMinCount.count = parseInt(e.target.value, 10) || 0;
+      else if (f === 'lead-level') r.leadershipMinCount.level = parseInt(e.target.value, 10);
+      else if (f === 'lead-count') r.leadershipMinCount.count = parseInt(e.target.value, 10) || 0;
+      else if (f === 'gender-male') r.genderMinCount.male = parseInt(e.target.value, 10) || 0;
+      else if (f === 'gender-female') r.genderMinCount.female = parseInt(e.target.value, 10) || 0;
+      else if (f === 'workerCount') tpl.defaultWorkerCount = e.target.value ? parseInt(e.target.value, 10) : null;
+      APP.state.save();
+    });
+    el.addEventListener('click', function (e) {
+      if (e.target.closest('[data-action="add-jobtemplate-start"]')) {
+        APP.modal.open(APP.pools.addJobTemplateModalHtml(), { onDismiss: function () { APP.modal.close(); } });
+        return;
+      }
+      var delBtn = e.target.closest('[data-action="delete-jobtemplate"]');
+      if (delBtn) {
+        var tr = delBtn.closest('tr[data-id]');
+        if (!confirm('למחוק את העבודה הקבועה לצמיתות?')) return;
+        var d = APP.state.get();
+        d.pools.postTemplates = d.pools.postTemplates.filter(function (x) { return x.id !== tr.dataset.id; });
+        APP.state.save();
+        APP.pools.renderJobTemplates();
       }
     });
   }
@@ -570,6 +637,7 @@
         if (btn.dataset.tab === 'trainees') renderTraineesTabGated();
         if (btn.dataset.tab === 'leaders') APP.pools.renderLeaders();
         if (btn.dataset.tab === 'farmers') APP.pools.renderFarmers();
+        if (btn.dataset.tab === 'jobtemplates') APP.pools.renderJobTemplates();
         if (btn.dataset.tab === 'settings') renderSettings();
       });
     });
@@ -609,6 +677,7 @@
       APP.history.render();
       APP.pools.renderLeaders();
       APP.pools.renderFarmers();
+      APP.pools.renderJobTemplates();
       renderTraineesTabGated();
       renderSettings();
       wireTaskTab();
@@ -617,6 +686,7 @@
       wireTrainees();
       wireSimplePool('tab-leaders', 'leaders', APP.state.addLeader);
       wireSimplePool('tab-farmers', 'farmers', APP.state.addFarmer);
+      wireJobTemplates();
       wireFarmerPrefs();
       wireSettings();
       wireModal();
