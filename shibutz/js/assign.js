@@ -12,16 +12,20 @@ window.APP = window.APP || {};
 //      level >= L") are satisfied first, in interleaved rounds across
 //      all posts at once (highest deficit-urgency wins each round),
 //      relaxing the level gradually when not enough candidates qualify.
-//   3. Remaining candidates are filled by repeatedly picking the single
-//      globally-cheapest (candidate, post) pair by closeness to the
-//      post's strength/dexterity targets - this global-minimum-first
-//      approach is what keeps the result balanced across posts instead
-//      of dumping leftovers on the last one. Cost is evaluated per POST
-//      (not per open slot) since every open slot in the same post has
-//      identical cost - a post with workerCount == null ("flexible")
-//      has unlimited capacity and simply never drops out of contention.
-//   4. Surplus leaders (untraited) fill any posts still open, in simple
-//      pool order.
+//   3. Remaining candidates are filled one at a time: each round, the
+//      least-served post (lowest filled/target ratio) picks its
+//      cheapest-fit candidate by closeness to its strength/dexterity
+//      targets. This keeps the result balanced by how well each post's
+//      own requirement is met, regardless of the order posts were
+//      created in - a post defined last still gets a fair turn instead
+//      of whatever's left after earlier posts took the best matches.
+//      Fixed-size posts are balanced against each other first; flexible
+//      (workerCount == null) posts only start receiving people once
+//      every fixed post has reached its target, then are balanced
+//      against each other by raw headcount.
+//   4. Surplus leaders (untraited) fill any posts still open, one at a
+//      time to whichever open post is currently least-served - not
+//      simply the first post in the list.
 //   5. Anyone left over goes to "spare" - always shown, never dropped.
 //   6. Any post that couldn't reach its configured headcount or a hard
 //      quota is reported in `shortfalls` - assignment still happens for
@@ -92,6 +96,17 @@ APP.assign = (function () {
         return c.trainee && matchesTrait(c.trainee, trait, level);
       }).length;
     }
+    // How "served" a post is so far, for balancing across posts regardless
+    // of which order they were created in. A fixed-size post is measured
+    // against its own target (0 = empty, 1 = full); a flexible post has no
+    // target to be a fraction of, so it's measured by raw headcount instead
+    // - only ever compared against other flexible posts (see phase 2/3),
+    // never mixed with a fixed post's ratio.
+    function fillMetric(post) {
+      var cap = capacityFor(post);
+      if (cap === Infinity) return assignedByPost[post.id].length;
+      return assignedByPost[post.id].length / cap;
+    }
 
     var remaining = trainees.map(function (t) { return { id: t.id, trainee: t, kind: 'trainee' }; })
       .concat((task.extraGuests || []).map(function (g) { return { id: g.id, trainee: g, kind: 'guest' }; }));
@@ -127,7 +142,11 @@ APP.assign = (function () {
           // urgency at the post's own target so it stays on the same
           // scale as a fixed-size post instead of being diluted to 0.
           var urgency = deficit / Math.min(open, target);
-          if (!best || urgency > best.urgency) {
+          // Tie-break by which post is least-served so far, not by which
+          // post happens to come first in the array - otherwise the
+          // earliest-created post wins every tied round and ends up
+          // consistently better-served than posts defined later.
+          if (!best || urgency > best.urgency || (urgency === best.urgency && fillMetric(post) < fillMetric(best.post))) {
             best = { post: post, trait: trait, level: level, urgency: urgency };
           }
         });
@@ -155,11 +174,15 @@ APP.assign = (function () {
       remaining = remaining.filter(function (c) { return c.id !== chosen.id; });
     }
 
-    // ---- Phase 2: continuous traits (strength/dexterity), global-minimum-first greedy ----
+    // ---- Phase 2: continuous traits (strength/dexterity), least-served-post-first ----
     // Cost only depends on the POST's requirements, so every open slot in
-    // the same post is identical - evaluate per post, not per slot. This
-    // is what keeps a flexible post's unlimited capacity cheap: the loop
-    // scales with the number of POSTS, not the number of slots.
+    // the same post is identical - evaluate per post, not per slot. Posts
+    // with a fixed headcount are balanced against each other by how much of
+    // their own target is filled so far (a post defined last still gets its
+    // fair turn instead of getting whatever's left after earlier posts ate
+    // the best matches); flexible (unlimited) posts only start receiving
+    // people once every fixed post has reached its target, and are then
+    // balanced against each other the same way, by raw headcount so far.
     function closenessCost(trainee, requirements, isPreferred) {
       var cost = Math.abs(trainee.ratings.strength - requirements.strength) +
         Math.abs(trainee.ratings.dexterity - requirements.dexterity);
@@ -167,24 +190,30 @@ APP.assign = (function () {
     }
     var openPosts = task.posts.filter(hasOpenCapacity);
     while (remaining.length && openPosts.length) {
-      var bestPair = null;
+      var fixedOpen = openPosts.filter(function (p) { return capacityFor(p) !== Infinity; });
+      var pool = fixedOpen.length ? fixedOpen : openPosts;
+      var targetPost = pool.reduce(function (least, p) {
+        return (!least || fillMetric(p) < fillMetric(least)) ? p : least;
+      }, null);
+      var bestCandidate = null;
       remaining.forEach(function (c) {
-        openPosts.forEach(function (post) {
-          var cost = closenessCost(c.trainee, post.requirements, isPreferredFor(c.id, post.id));
-          if (!bestPair || cost < bestPair.cost) bestPair = { candidate: c, post: post, cost: cost };
-        });
+        var cost = closenessCost(c.trainee, targetPost.requirements, isPreferredFor(c.id, targetPost.id));
+        if (!bestCandidate || cost < bestCandidate.cost) bestCandidate = { candidate: c, cost: cost };
       });
-      assignedByPost[bestPair.post.id].push(bestPair.candidate);
-      remaining = remaining.filter(function (c) { return c.id !== bestPair.candidate.id; });
+      assignedByPost[targetPost.id].push(bestCandidate.candidate);
+      remaining = remaining.filter(function (c) { return c.id !== bestCandidate.candidate.id; });
       openPosts = task.posts.filter(hasOpenCapacity);
     }
 
-    // ---- Phase 3: surplus leaders fill whatever is left, simple pool order ----
+    // ---- Phase 3: surplus leaders fill whatever is left, least-served-post-first ----
     var leaderQueue = surplusLeaders.slice();
     while (leaderQueue.length) {
-      var openPost = task.posts.filter(hasOpenCapacity)[0];
-      if (!openPost) break;
-      assignedByPost[openPost.id].push({ id: leaderQueue[0].id, leader: leaderQueue[0] });
+      var openPostsForLeaders = task.posts.filter(hasOpenCapacity);
+      if (!openPostsForLeaders.length) break;
+      var leastServedPost = openPostsForLeaders.reduce(function (least, p) {
+        return (!least || fillMetric(p) < fillMetric(least)) ? p : least;
+      }, null);
+      assignedByPost[leastServedPost.id].push({ id: leaderQueue[0].id, leader: leaderQueue[0] });
       leaderQueue.shift();
     }
 

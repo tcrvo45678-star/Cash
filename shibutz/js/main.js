@@ -287,7 +287,7 @@
         var gender = document.getElementById('modal-trainee-gender').value;
         APP.state.addTrainee(name, ratings, cohort, gender);
         APP.modal.close();
-        APP.pools.renderTrainees();
+        renderTraineesTabGated();
         return;
       }
       if (e.target.closest('[data-action="add-trainee-cancel"]')) {
@@ -423,7 +423,7 @@
         var d = APP.state.get();
         d.pools.trainees = d.pools.trainees.filter(function (x) { return x.id !== tr.dataset.id; });
         APP.state.save();
-        APP.pools.renderTrainees();
+        renderTraineesTabGated();
       }
     });
   }
@@ -607,7 +607,9 @@
       appShown = true;
       APP.render.renderTaskTab();
       APP.history.render();
-      APP.pools.render();
+      APP.pools.renderLeaders();
+      APP.pools.renderFarmers();
+      renderTraineesTabGated();
       renderSettings();
       wireTaskTab();
       wirePostRequirementsTab();
