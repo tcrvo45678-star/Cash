@@ -273,15 +273,17 @@ APP.pools = (function () {
     var list = APP.state.get().pools.postTemplates;
     el.innerHTML = '<div class="card">' +
       '<h2>עבודות קבועות</h2>' +
-      '<p class="muted">הגדר/י כאן פרופילי עבודה קבועים (הדרישות שחניך צריך לעמוד בהן) - בעת הוספת עמדה חדשה אפשר לבחור עבודה קבועה ולמלא אוטומטית את הדרישות.</p>' +
+      '<p class="muted">הגדר/י כאן פרופילי עבודה קבועים (הדרישות שחניך צריך לעמוד בהן) - בעת הוספת עמדה חדשה אפשר לבחור עבודה קבועה ולמלא אוטומטית את הדרישות. לכל עבודה קבועה יש גם "נבחרת" - חניכים שהתמקצעו בה (עמודת "נבחרת" למטה, לחצו "ערוך נבחרת" ליד העבודה הרצויה).</p>' +
       '<div class="table-scroll"><table class="pool-table">' +
-      '<thead><tr><th>שם העבודה</th><th>חוזק</th><th>זריזות</th><th>מוטוריקה עדינה</th><th>אחראיות (רמה/כמות)</th><th>הנהגה (רמה/כמות)</th><th>מגדר מינ׳ (בנים/בנות)</th><th>מס׳ עובדים</th><th>נבחרת</th><th>פעיל</th><th></th></tr></thead>' +
+      '<thead><tr><th>שם העבודה</th><th>נבחרת</th><th>חוזק</th><th>זריזות</th><th>מוטוריקה עדינה</th><th>אחראיות (רמה/כמות)</th><th>הנהגה (רמה/כמות)</th><th>מגדר מינ׳ (בנים/בנות)</th><th>מס׳ עובדים</th><th>פעיל</th><th></th></tr></thead>' +
       '<tbody>' +
       list.map(function (tpl) {
         var r = tpl.defaultRequirements;
         var squadCount = (tpl.specialistTraineeIds || []).length;
         return '<tr data-id="' + tpl.id + '"' + (tpl.active === false ? ' class="inactive-row"' : '') + '>' +
           '<td><input class="pool-input" data-field="name" aria-label="שם העבודה" value="' + U.escapeHtml(tpl.name) + '"></td>' +
+          '<td><span class="muted">' + squadCount + ' חניכים</span> ' +
+            '<button class="btn-tiny" data-action="edit-jobtemplate-squad" data-template-id="' + tpl.id + '">ערוך נבחרת</button></td>' +
           '<td><select data-field="strength" aria-label="חוזק">' + U.ratingOptions(r.strength) + '</select></td>' +
           '<td><select data-field="dexterity" aria-label="זריזות">' + U.ratingOptions(r.dexterity) + '</select></td>' +
           '<td><select data-field="fineMotor" aria-label="מוטוריקה עדינה">' + U.ratingOptions(r.fineMotor) + '</select></td>' +
@@ -292,13 +294,11 @@ APP.pools = (function () {
           '<td class="req-pair"><input type="number" min="0" data-field="gender-male" aria-label="מינ׳ בנים" value="' + r.genderMinCount.male + '">' +
             '<input type="number" min="0" data-field="gender-female" aria-label="מינ׳ בנות" value="' + r.genderMinCount.female + '"></td>' +
           '<td><input type="number" min="1" data-field="workerCount" aria-label="מספר עובדים" placeholder="גמיש" value="' + (tpl.defaultWorkerCount == null ? '' : tpl.defaultWorkerCount) + '"></td>' +
-          '<td><span class="muted">' + squadCount + ' חניכים</span> ' +
-            '<button class="btn-tiny" data-action="edit-jobtemplate-squad" data-template-id="' + tpl.id + '">ערוך נבחרת</button></td>' +
           '<td><input type="checkbox" data-field="active" aria-label="פעיל" ' + (tpl.active !== false ? 'checked' : '') + '></td>' +
           '<td><button class="btn-tiny btn-danger" data-action="delete-jobtemplate">מחק</button></td>' +
           '</tr>';
       }).join('') +
-      (list.length ? '' : '<tr><td colspan="11" class="empty-row">אין עבודות קבועות עדיין</td></tr>') +
+      (list.length ? '' : '<tr><td colspan="11" class="empty-row">אין עבודות קבועות עדיין - לחצו למטה כדי להוסיף (את "הנבחרת" מגדירים אחרי ההוספה, בעמודה שתופיע בטבלה)</td></tr>') +
       '</tbody></table></div>' +
       '<div class="row add-row">' +
       '<button class="btn-primary" data-action="add-jobtemplate-start">+ הוסף עבודה קבועה</button>' +
