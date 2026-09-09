@@ -6,6 +6,7 @@ window.APP = window.APP || {};
 // storage.js's schema/migration logic).
 APP.seedData = (function () {
   var SEED_FLAG_KEY = 'shibutz.seed.20230702';
+  var BACKFILL_FLAG_KEY = 'shibutz.seed.20230702.backfilled';
 
   var SEED_LEADERS = ['אלה', 'נדב', 'מעיין', 'נטע', 'יעל'];
 
@@ -55,6 +56,12 @@ APP.seedData = (function () {
   function setFlag() {
     try { localStorage.setItem(SEED_FLAG_KEY, '1'); } catch (e) {}
   }
+  function hasBackfillFlag() {
+    try { return localStorage.getItem(BACKFILL_FLAG_KEY) === '1'; } catch (e) { return true; }
+  }
+  function setBackfillFlag() {
+    try { localStorage.setItem(BACKFILL_FLAG_KEY, '1'); } catch (e) {}
+  }
 
   function existsByName(list, name) {
     var norm = name.trim().toLowerCase();
@@ -82,7 +89,10 @@ APP.seedData = (function () {
     // Always check if data is actually present, regardless of flag
     // (in case localStorage was cleared or data is missing)
     var d = APP.state.get();
-    backfillCohortsAndGenders(d);
+    if (!hasBackfillFlag()) {
+      backfillCohortsAndGenders(d);
+      setBackfillFlag();
+    }
 
     var leadersMissing = SEED_LEADERS.some(function (name) { return !existsByName(d.pools.leaders, name); });
     var traineesMissing = SEED_TRAINEES.some(function (t) { return !existsByName(d.pools.trainees, t.name); });

@@ -5,7 +5,7 @@ APP.storage = (function () {
 
   function emptyData() {
     return {
-      schemaVersion: 1,
+      schemaVersion: 1, // reserved for future step-gated migrations; migrate() currently re-applies all defaults unconditionally regardless of value
       auth: { passwordHash: null },
       pools: {
         trainees: [],
@@ -111,5 +111,5 @@ APP.storage = (function () {
     reader.readAsText(file);
   }
 
-  return { load: load, save: save, uid: uid, emptyData: emptyData, exportJSON: exportJSON, importJSON: importJSON };
+  return { load: load, save: save, uid: uid, exportJSON: exportJSON, importJSON: importJSON };
 })();

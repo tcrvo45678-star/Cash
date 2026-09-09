@@ -74,8 +74,7 @@ APP.render = (function () {
   }
 
   function workerCountBadge(task, post) {
-    var pa = task.assignment && task.assignment.postAssignments[post.id];
-    var assignedCount = pa ? pa.workerIds.filter(function (w) { return w.t === 'ref'; }).length : 0;
+    var assignedCount = assignedCountFor(task, post);
     var leader = (post.leader && post.leader.t === 'ref' && post.leader.rt === 'leader')
       ? APP.state.findById(APP.state.get().pools.leaders, post.leader.id) : null;
     var totalCount = assignedCount + (leader ? 1 : 0);
@@ -106,6 +105,19 @@ APP.render = (function () {
       : 0;
   }
 
+  // Cohort color-class + text-badge for a cell value (trainee -> its
+  // cohort, guest -> the guest color, anything else -> none). Shared by
+  // the grid/card slots and the spare panel so the two never drift apart.
+  function cohortClassAndBadge(val) {
+    if (val.t === 'ref' && val.rt === 'trainee') {
+      var tr = APP.state.findById(APP.state.get().pools.trainees, val.id);
+      if (tr && tr.cohort) return { cls: ' cohort-' + tr.cohort, badge: U.cohortShortLabel(tr.cohort) };
+    } else if (val.t === 'ref' && val.rt === 'guest') {
+      return { cls: ' cohort-guest', badge: U.cohortShortLabel('guest') };
+    }
+    return { cls: '', badge: '' };
+  }
+
   // Shared slot-cell data for both the desktop table (gridHtml) and the
   // mobile per-post cards (postCardsHtml) - keeps cohort/phone-badge/kind
   // logic in one place so the two layouts never drift apart.
@@ -116,16 +128,9 @@ APP.render = (function () {
     var pa = task.assignment.postAssignments[post.id];
     var val = (pa && pa.workerIds[i]) ? pa.workerIds[i] : APP.state.emptyVal();
     var text = APP.state.cellDisplay(val, task);
-    var cohortClass = '', cohortBadge = '';
-    if (val.t === 'ref' && val.rt === 'trainee') {
-      var tr = APP.state.findById(APP.state.get().pools.trainees, val.id);
-      if (tr && tr.cohort) { cohortClass = ' cohort-' + tr.cohort; cohortBadge = U.cohortShortLabel(tr.cohort); }
-      if (pa && pa.phoneCarrierId && pa.phoneCarrierId === val.id) text += ' 📱';
-    } else if (val.t === 'ref' && val.rt === 'guest') {
-      cohortClass = ' cohort-guest';
-      cohortBadge = U.cohortShortLabel('guest');
-    }
-    return { cellId: cellId, text: text, cohortClass: cohortClass, cohortBadge: cohortBadge };
+    if (val.t === 'ref' && val.rt === 'trainee' && pa && pa.phoneCarrierId && pa.phoneCarrierId === val.id) text += ' 📱';
+    var cohort = cohortClassAndBadge(val);
+    return { cellId: cellId, text: text, cohortClass: cohort.cls, cohortBadge: cohort.badge };
   }
 
   function gridHtml(task) {
@@ -185,7 +190,7 @@ APP.render = (function () {
   function shortfallsHtml(task) {
     if (!task.assignment || !task.assignment.shortfalls || !task.assignment.shortfalls.length) return '';
     var items = task.assignment.shortfalls.map(function (s) {
-      var post = task.posts.filter(function (p) { return p.id === s.postId; })[0];
+      var post = APP.state.findById(task.posts, s.postId);
       var farmer = post && APP.state.findById(APP.state.get().pools.farmers, post.farmerId);
       var label = farmer ? farmer.name : '(עמדה)';
       var msg = s.type === 'headcount'
@@ -199,16 +204,9 @@ APP.render = (function () {
   function spareHtml(task) {
     if (!task.assignment || !task.assignment.spare.length) return '';
     var items = task.assignment.spare.map(function (v, i) {
-      var cohortClass = '', cohortBadge = '';
-      if (v.t === 'ref' && v.rt === 'trainee') {
-        var tr = APP.state.findById(APP.state.get().pools.trainees, v.id);
-        if (tr && tr.cohort) { cohortClass = ' cohort-' + tr.cohort; cohortBadge = U.cohortShortLabel(tr.cohort); }
-      } else if (v.t === 'ref' && v.rt === 'guest') {
-        cohortClass = ' cohort-guest';
-        cohortBadge = U.cohortShortLabel('guest');
-      }
-      var badgeHtml = cohortBadge ? '<span class="cell-cohort-badge">' + U.escapeHtml(cohortBadge) + '</span>' : '';
-      return '<div class="cell spare-chip' + cohortClass + '" tabindex="0" data-cell-id="spare:' + i + '">' +
+      var cohort = cohortClassAndBadge(v);
+      var badgeHtml = cohort.badge ? '<span class="cell-cohort-badge">' + U.escapeHtml(cohort.badge) + '</span>' : '';
+      return '<div class="cell spare-chip' + cohort.cls + '" tabindex="0" data-cell-id="spare:' + i + '">' +
         badgeHtml + U.escapeHtml(APP.state.cellDisplay(v, task)) + '</div>';
     }).join('');
     return '<div class="spare-panel"><h3>ספייר (עודפים)</h3><div class="spare-list">' + items + '</div></div>';

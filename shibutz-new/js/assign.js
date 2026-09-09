@@ -33,17 +33,16 @@ window.APP = window.APP || {};
 APP.assign = (function () {
   function isGenderTrait(trait) { return trait === 'gender-male' || trait === 'gender-female'; }
 
-  // Defensive against posts saved before a requirement field existed (an
-  // older export/import, or one carried forward from before this session's
-  // changes) - without this, a single malformed post throws and blocks
-  // runAutoAssign for the whole task, which used to also block the modal
-  // that triggered it from ever closing.
+  // The full requirements shape (strength/dexterity/responsibilityMinCount/
+  // leadershipMinCount/genderMinCount) is guaranteed by storage.js's
+  // migrate() on every load and JSON import, so no defensive guard is
+  // needed here.
   function quotaTarget(post, trait) {
-    if (trait === 'responsibility') return (post.requirements.responsibilityMinCount && post.requirements.responsibilityMinCount.count) || 0;
-    if (trait === 'leadership') return (post.requirements.leadershipMinCount && post.requirements.leadershipMinCount.count) || 0;
-    var g = post.requirements.genderMinCount;
-    if (trait === 'gender-male') return (g && g.male) || 0;
-    if (trait === 'gender-female') return (g && g.female) || 0;
+    var r = post.requirements;
+    if (trait === 'responsibility') return r.responsibilityMinCount.count;
+    if (trait === 'leadership') return r.leadershipMinCount.count;
+    if (trait === 'gender-male') return r.genderMinCount.male;
+    if (trait === 'gender-female') return r.genderMinCount.female;
     return 0;
   }
 
@@ -81,8 +80,6 @@ APP.assign = (function () {
     var cohort = (c.trainee && c.trainee.cohort) || 'e';
     return 100 - APP.util.cohortRank(cohort);
   }
-  function colorClusterCompare(a, b) { return colorClusterKey(a) - colorClusterKey(b); }
-
   function runAutoAssign(task, pools) {
     var trainees = APP.state.activeOnly(pools.trainees).filter(function (t) {
       return task.absentTraineeIds.indexOf(t.id) === -1;
@@ -252,7 +249,7 @@ APP.assign = (function () {
       // sit together, then guests, then surplus leaders - so the printed/
       // on-screen table reads as clean color blocks instead of a scatter
       // in whatever order the algorithm happened to pick people.
-      assigned = assigned.slice().sort(colorClusterCompare);
+      assigned = assigned.slice().sort(function (a, b) { return colorClusterKey(a) - colorClusterKey(b); });
       var workerIds = assigned.map(function (c) {
         if (c.trainee) return APP.state.refVal(c.kind || 'trainee', c.id);
         if (c.leader) return APP.state.refVal('leader', c.id);

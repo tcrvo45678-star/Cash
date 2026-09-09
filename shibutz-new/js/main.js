@@ -2,6 +2,25 @@
   var taskActions;
   var debouncedSave = APP.util.debounce(function () { APP.state.save(); }, 400);
 
+  // Close first so the response feels instant, then re-render, reassign,
+  // and re-render again - a slow or failing reassign never leaves the
+  // modal stuck open.
+  function closeModalAndReassign() {
+    APP.modal.close();
+    APP.render.renderTaskTab();
+    autoAssignIfPosts();
+    APP.render.renderTaskTab();
+  }
+
+  function handleCellInput(e) {
+    if (e.target && e.target.dataset && e.target.dataset.cellInput) {
+      var task = APP.state.getCurrentTask();
+      if (!task) return;
+      var cell = APP.state.resolveCell(task, e.target.dataset.cellInput);
+      if (cell) { cell.set(APP.state.textVal(e.target.value)); debouncedSave(); }
+    }
+  }
+
   function openPostModal() {
     APP.modal.open(APP.render.postStepperHtml(), { onDismiss: cancelPostModal });
   }
@@ -111,7 +130,7 @@
       'add-post-start': function () { APP.task.startStepper(); openPostModal(); },
       'edit-post': function (el) {
         var task = APP.state.getCurrentTask();
-        var post = task.posts.filter(function (p) { return p.id === el.dataset.postId; })[0];
+        var post = APP.state.findById(task.posts, el.dataset.postId);
         if (!post) return;
         APP.task.startStepper(post);
         openPostModal();
@@ -149,9 +168,9 @@
   // no assignment exists yet - used when a task first becomes visible with
   // posts already on it (carried over from the previous day), so people are
   // filled in immediately instead of waiting for a manual "שבץ אוטומטית".
-  function autoAssignIfPosts() {
+  function autoAssignIfNeeded(shouldRun) {
     var task = APP.state.getCurrentTask();
-    if (task && task.posts.length) {
+    if (task && shouldRun(task)) {
       try {
         task.assignment = APP.assign.runAutoAssign(task, APP.state.get().pools);
         task.updatedAt = Date.now();
@@ -161,19 +180,8 @@
       }
     }
   }
-
-  function rerunAutoAssignIfNeeded() {
-    var task = APP.state.getCurrentTask();
-    if (task && task.assignment) {
-      try {
-        task.assignment = APP.assign.runAutoAssign(task, APP.state.get().pools);
-        task.updatedAt = Date.now();
-        APP.state.save();
-      } catch (err) {
-        alert('אירעה שגיאה בשיבוץ האוטומטי, נסה שוב.');
-      }
-    }
-  }
+  function autoAssignIfPosts() { autoAssignIfNeeded(function (t) { return t.posts.length; }); }
+  function rerunAutoAssignIfNeeded() { autoAssignIfNeeded(function (t) { return t.assignment; }); }
 
   function wireFarmerPrefs() {
     var el = document.getElementById('tab-farmers');
@@ -221,15 +229,7 @@
       if (e.target.closest('[data-action="stepper-commit"]')) {
         APP.task.readStep3FromDom();
         if (APP.task.commitStepper() !== false) {
-          // Close and render immediately so the response feels instant -
-          // the post is already saved at this point. The (usually near-
-          // instant, but try/catch-guarded) auto-reassign runs after, with
-          // its own render once it's done, so a slow or failing recompute
-          // never leaves the modal stuck open.
-          APP.modal.close();
-          APP.render.renderTaskTab();
-          autoAssignIfPosts();
-          APP.render.renderTaskTab();
+          closeModalAndReassign();
         }
         return;
       }
@@ -259,13 +259,10 @@
         var carriedTask = APP.state.getCurrentTask();
         if (carriedTask) {
           APP.util.qsa('#modal-box input[type="checkbox"][data-post-id]').forEach(function (cb) {
-            if (!cb.checked) APP.task.deletePostNoConfirm(cb.dataset.postId);
+            if (!cb.checked) APP.task.deletePost(cb.dataset.postId, true);
           });
         }
-        APP.modal.close();
-        APP.render.renderTaskTab();
-        autoAssignIfPosts();
-        APP.render.renderTaskTab();
+        closeModalAndReassign();
         var afterCarried = APP.state.getCurrentTask();
         if (afterCarried && afterCarried.posts.length === 0) {
           APP.task.startStepper();
@@ -340,14 +337,7 @@
         return;
       }
     });
-    overlay.addEventListener('input', function (e) {
-      if (e.target && e.target.dataset && e.target.dataset.cellInput) {
-        var task = APP.state.getCurrentTask();
-        if (!task) return;
-        var cell = APP.state.resolveCell(task, e.target.dataset.cellInput);
-        if (cell) { cell.set(APP.state.textVal(e.target.value)); debouncedSave(); }
-      }
-    });
+    overlay.addEventListener('input', handleCellInput);
     overlay.addEventListener('change', function (e) {
       if (e.target && e.target.id === 'stepper-template-select') {
         APP.task.applyTemplate(e.target.value);
@@ -364,14 +354,7 @@
       var fn = taskActions[actionEl.dataset.action];
       if (fn) fn(actionEl, e);
     });
-    el.addEventListener('input', function (e) {
-      if (e.target && e.target.dataset && e.target.dataset.cellInput) {
-        var task = APP.state.getCurrentTask();
-        if (!task) return;
-        var cell = APP.state.resolveCell(task, e.target.dataset.cellInput);
-        if (cell) { cell.set(APP.state.textVal(e.target.value)); debouncedSave(); }
-      }
-    });
+    el.addEventListener('input', handleCellInput);
   }
 
   function wirePostRequirementsTab() {

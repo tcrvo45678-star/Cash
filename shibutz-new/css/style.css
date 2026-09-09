@@ -74,8 +74,6 @@ input[type="text"], input[type="date"], input[type="password"], input[type="numb
   background: white;
   color: var(--ink);
 }
-.num-mini { width: 56px; }
-
 /* Button size scale (do not add a 4th tier):
    - button/.btn-primary/.btn-secondary/.btn-danger: default, forms & primary actions
    - .btn-small: compact table-row actions (history.js only)
@@ -123,8 +121,6 @@ button {
 .post-req-dl dt { font-size: var(--fs-1); color: var(--muted); }
 .post-req-dl dd { font-size: var(--fs-2); }
 
-.post-sub { font-size: var(--fs-1); color: var(--muted); text-align: right; padding: 4px 6px; font-weight: 400; }
-.post-sub > div { margin-bottom: 2px; }
 .post-actions { display: flex; gap: 4px; margin-top: 4px; }
 
 .absent-list { display: flex; flex-wrap: wrap; gap: 10px; }

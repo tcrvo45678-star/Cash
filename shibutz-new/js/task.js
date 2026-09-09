@@ -54,16 +54,10 @@ APP.task = (function () {
     APP.state.save();
   }
 
-  function deletePost(postId) {
+  function deletePost(postId, skipConfirm) {
     var t = APP.state.getCurrentTask();
     if (!t) return;
-    if (!confirm('למחוק את העמדה?')) return;
-    APP.state.removePost(t, postId);
-  }
-
-  function deletePostNoConfirm(postId) {
-    var t = APP.state.getCurrentTask();
-    if (!t) return;
+    if (!skipConfirm && !confirm('למחוק את העמדה?')) return;
     APP.state.removePost(t, postId);
   }
 
@@ -81,7 +75,7 @@ APP.task = (function () {
         leaderId: (existingPost.leader && existingPost.leader.t === 'ref' && existingPost.leader.rt === 'leader') ? existingPost.leader.id : '',
         transportMethod: existingPost.transportMethod || 'shuttle',
         templateId: existingPost.templateId || '',
-        requirements: Object.assign({ genderMinCount: { male: 0, female: 0 } }, JSON.parse(JSON.stringify(existingPost.requirements))),
+        requirements: JSON.parse(JSON.stringify(existingPost.requirements)),
         workerCount: existingPost.workerCount
       };
     } else {
@@ -174,7 +168,7 @@ APP.task = (function () {
       farmer.jobType = stepper.jobType || '';
     }
     if (stepper.editingPostId) {
-      var post = t.posts.filter(function (p) { return p.id === stepper.editingPostId; })[0];
+      var post = APP.state.findById(t.posts, stepper.editingPostId);
       if (post) {
         post.farmerId = farmerId;
         post.leader = APP.state.refVal('leader', stepper.leaderId);
@@ -200,7 +194,6 @@ APP.task = (function () {
     addGuest: addGuest,
     removeGuest: removeGuest,
     deletePost: deletePost,
-    deletePostNoConfirm: deletePostNoConfirm,
     startStepper: startStepper,
     cancelStepper: cancelStepper,
     getStepper: getStepper,

@@ -11,7 +11,6 @@ APP.util = (function () {
       .replace(/'/g, '&#39;');
   }
 
-  function qs(sel, root) { return (root || document).querySelector(sel); }
   function qsa(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
 
   function debounce(fn, ms) {
@@ -63,7 +62,7 @@ APP.util = (function () {
   }
 
   return {
-    escapeHtml: escapeHtml, qs: qs, qsa: qsa, ratingOptions: ratingOptions,
+    escapeHtml: escapeHtml, qsa: qsa, ratingOptions: ratingOptions,
     COHORTS: COHORTS, cohortOptions: cohortOptions, cohortRank: cohortRank,
     cohortShortLabel: cohortShortLabel,
     genderOptions: genderOptions, debounce: debounce
