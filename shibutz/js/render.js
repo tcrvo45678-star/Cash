@@ -116,14 +116,16 @@ APP.render = (function () {
     var pa = task.assignment.postAssignments[post.id];
     var val = (pa && pa.workerIds[i]) ? pa.workerIds[i] : APP.state.emptyVal();
     var text = APP.state.cellDisplay(val, task);
-    var kindClass = val.t === 'ref' ? (' kind-' + val.rt) : '';
-    var cohortClass = '';
+    var cohortClass = '', cohortBadge = '';
     if (val.t === 'ref' && val.rt === 'trainee') {
       var tr = APP.state.findById(APP.state.get().pools.trainees, val.id);
-      if (tr && tr.cohort) cohortClass = ' cohort-' + tr.cohort;
+      if (tr && tr.cohort) { cohortClass = ' cohort-' + tr.cohort; cohortBadge = U.cohortShortLabel(tr.cohort); }
       if (pa && pa.phoneCarrierId && pa.phoneCarrierId === val.id) text += ' 📱';
+    } else if (val.t === 'ref' && val.rt === 'guest') {
+      cohortClass = ' cohort-guest';
+      cohortBadge = U.cohortShortLabel('guest');
     }
-    return { cellId: cellId, text: text, kindClass: kindClass, cohortClass: cohortClass };
+    return { cellId: cellId, text: text, cohortClass: cohortClass, cohortBadge: cohortBadge };
   }
 
   function gridHtml(task) {
@@ -141,7 +143,8 @@ APP.render = (function () {
       bodyRows += '<tr>' + task.posts.map(function (post) {
         var cell = slotCellData(task, post, i);
         if (!cell) return '<td class="grid-cell empty-cell"></td>';
-        return '<td class="grid-cell cell' + cell.kindClass + cell.cohortClass + '" tabindex="0" data-cell-id="' + cell.cellId + '">' +
+        return '<td class="grid-cell cell' + cell.cohortClass + '" tabindex="0" data-cell-id="' + cell.cellId + '">' +
+          (cell.cohortBadge ? '<span class="cell-cohort-badge">' + U.escapeHtml(cell.cohortBadge) + '</span>' : '') +
           '<span class="cell-text">' + U.escapeHtml(cell.text) + '</span>' +
           '</td>';
       }).join('') + '</tr>';
@@ -161,7 +164,8 @@ APP.render = (function () {
       for (var i = 0; i < maxSlots; i++) {
         var cell = slotCellData(task, post, i);
         if (!cell) continue;
-        rows += '<div class="cell post-card-cell' + cell.kindClass + cell.cohortClass + '" tabindex="0" data-cell-id="' + cell.cellId + '">' +
+        rows += '<div class="cell post-card-cell' + cell.cohortClass + '" tabindex="0" data-cell-id="' + cell.cellId + '">' +
+          (cell.cohortBadge ? '<span class="cell-cohort-badge">' + U.escapeHtml(cell.cohortBadge) + '</span>' : '') +
           '<span class="cell-text">' + U.escapeHtml(cell.text || '(ריק)') + '</span>' +
           '</div>';
       }
@@ -195,13 +199,17 @@ APP.render = (function () {
   function spareHtml(task) {
     if (!task.assignment || !task.assignment.spare.length) return '';
     var items = task.assignment.spare.map(function (v, i) {
-      var cohortClass = '';
+      var cohortClass = '', cohortBadge = '';
       if (v.t === 'ref' && v.rt === 'trainee') {
         var tr = APP.state.findById(APP.state.get().pools.trainees, v.id);
-        if (tr && tr.cohort) cohortClass = ' cohort-' + tr.cohort;
+        if (tr && tr.cohort) { cohortClass = ' cohort-' + tr.cohort; cohortBadge = U.cohortShortLabel(tr.cohort); }
+      } else if (v.t === 'ref' && v.rt === 'guest') {
+        cohortClass = ' cohort-guest';
+        cohortBadge = U.cohortShortLabel('guest');
       }
+      var badgeHtml = cohortBadge ? '<span class="cell-cohort-badge">' + U.escapeHtml(cohortBadge) + '</span>' : '';
       return '<div class="cell spare-chip' + cohortClass + '" tabindex="0" data-cell-id="spare:' + i + '">' +
-        U.escapeHtml(APP.state.cellDisplay(v, task)) + '</div>';
+        badgeHtml + U.escapeHtml(APP.state.cellDisplay(v, task)) + '</div>';
     }).join('');
     return '<div class="spare-panel"><h3>ספייר (עודפים)</h3><div class="spare-list">' + items + '</div></div>';
   }
@@ -221,7 +229,7 @@ APP.render = (function () {
   function guestsHtml(task) {
     var list = task.extraGuests.map(function (g) {
       return '<span class="guest-chip">' + U.escapeHtml(g.name) +
-        ' <button class="chip-x" data-action="remove-guest" data-guest-id="' + g.id + '">×</button></span>';
+        ' <button class="chip-x" data-action="remove-guest" data-guest-id="' + g.id + '" aria-label="הסר את ' + U.escapeHtml(g.name) + '">×</button></span>';
     }).join('');
     return '<div class="guests-row">' +
       '<div class="guests-list">' + list + '</div>' +

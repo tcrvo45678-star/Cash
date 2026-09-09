@@ -420,7 +420,7 @@
       if (!t) return;
       var f = e.target.dataset.field;
       if (f === 'name') t.name = e.target.value;
-      else if (f === 'active') t.active = e.target.checked;
+      else if (f === 'active') { t.active = e.target.checked; tr.classList.toggle('inactive-row', !e.target.checked); }
       else if (f === 'cohort') t.cohort = e.target.value;
       else if (f === 'gender') t.gender = e.target.value;
       else if (['strength', 'dexterity', 'responsibility', 'leadership'].indexOf(f) >= 0) {
@@ -467,7 +467,7 @@
       var r = tpl.defaultRequirements;
       var f = e.target.dataset.field;
       if (f === 'name') tpl.name = e.target.value;
-      else if (f === 'active') tpl.active = e.target.checked;
+      else if (f === 'active') { tpl.active = e.target.checked; tr.classList.toggle('inactive-row', !e.target.checked); }
       else if (f === 'strength' || f === 'dexterity') r[f] = parseInt(e.target.value, 10);
       else if (f === 'resp-level') r.responsibilityMinCount.level = parseInt(e.target.value, 10);
       else if (f === 'resp-count') r.responsibilityMinCount.count = parseInt(e.target.value, 10) || 0;
@@ -503,7 +503,7 @@
       var item = APP.state.findById(APP.state.get().pools[poolKey], tr.dataset.id);
       if (!item) return;
       var f = e.target.dataset.field;
-      if (f === 'active') item.active = e.target.checked;
+      if (f === 'active') { item.active = e.target.checked; tr.classList.toggle('inactive-row', !e.target.checked); }
       else if (f) item[f] = e.target.value;
       APP.state.save();
       APP.render.renderTaskTab();
@@ -594,21 +594,24 @@
         var urlInput = document.getElementById('backup-url-input');
         APP.backup.setUrl(urlInput ? urlInput.value.trim() : '');
         var statusEl = document.getElementById('backup-status');
-        if (statusEl) statusEl.textContent = 'הכתובת נשמרה';
+        if (statusEl) { statusEl.textContent = 'הכתובת נשמרה'; statusEl.className = 'muted'; }
       }
       if (e.target.closest('[data-action="test-backup-connection"]')) {
         var testStatusEl = document.getElementById('backup-status');
         var testUrlInput = document.getElementById('backup-url-input');
         var testUrl = testUrlInput ? testUrlInput.value.trim() : '';
-        if (testStatusEl) testStatusEl.textContent = 'בודק...';
+        if (testStatusEl) { testStatusEl.textContent = 'בודק...'; testStatusEl.className = 'muted'; }
         APP.backup.testConnection(testUrl, function (ok) {
-          if (testStatusEl) testStatusEl.textContent = ok ? '✓ החיבור תקין' : '✗ החיבור נכשל - בדוק את הכתובת';
+          if (testStatusEl) {
+            testStatusEl.textContent = ok ? '✓ החיבור תקין' : '✗ החיבור נכשל - בדוק את הכתובת';
+            testStatusEl.className = ok ? 'text-success' : 'error-text';
+          }
         });
       }
       if (e.target.closest('[data-action="backup-now"]')) {
         var nowStatusEl = document.getElementById('backup-status');
         APP.backup.sendNow();
-        if (nowStatusEl) nowStatusEl.textContent = 'גיבוי נשלח';
+        if (nowStatusEl) { nowStatusEl.textContent = 'גיבוי נשלח'; nowStatusEl.className = 'muted'; }
       }
     });
     el.addEventListener('change', function (e) {

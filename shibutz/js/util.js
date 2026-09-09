@@ -33,12 +33,18 @@ APP.util = (function () {
   }
 
   var COHORTS = [
-    { key: 'b', label: 'מחזור ב (יב)', rank: 4 },
-    { key: 'c', label: 'מחזור ג (יא)', rank: 3 },
-    { key: 'd', label: 'מחזור ד (י)', rank: 2 },
-    { key: 'e', label: 'מחזור ה (ט)', rank: 1 },
-    { key: 'guest', label: 'אורח', rank: 0 }
+    { key: 'b', label: 'מחזור ב (יב)', rank: 4, short: 'ב' },
+    { key: 'c', label: 'מחזור ג (יא)', rank: 3, short: 'ג' },
+    { key: 'd', label: 'מחזור ד (י)', rank: 2, short: 'ד' },
+    { key: 'e', label: 'מחזור ה (ט)', rank: 1, short: 'ה' },
+    { key: 'guest', label: 'אורח', rank: 0, short: 'אור' }
   ];
+  // Text fallback for cohort color-coding - background color alone isn't
+  // enough for colorblind users or grayscale printing.
+  function cohortShortLabel(key) {
+    var c = COHORTS.filter(function (x) { return x.key === key; })[0];
+    return c ? c.short : '';
+  }
   function cohortOptions(selected) {
     return COHORTS.map(function (c) {
       return '<option value="' + c.key + '"' + (c.key === selected ? ' selected' : '') + '>' + c.label + '</option>';
@@ -59,6 +65,7 @@ APP.util = (function () {
   return {
     escapeHtml: escapeHtml, qs: qs, qsa: qsa, ratingOptions: ratingOptions,
     COHORTS: COHORTS, cohortOptions: cohortOptions, cohortRank: cohortRank,
+    cohortShortLabel: cohortShortLabel,
     genderOptions: genderOptions, debounce: debounce
   };
 })();

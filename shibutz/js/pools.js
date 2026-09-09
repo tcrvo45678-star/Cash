@@ -20,7 +20,7 @@ APP.pools = (function () {
       '<thead><tr><th>שם</th><th>מחזור</th><th>מגדר</th><th>חוזק</th><th>זריזות</th><th>אחראיות</th><th>הנהגה</th><th>פעיל</th><th></th></tr></thead>' +
       '<tbody>' +
       list.map(function (t) {
-        return '<tr data-id="' + t.id + '">' +
+        return '<tr data-id="' + t.id + '"' + (t.active === false ? ' class="inactive-row"' : '') + '>' +
           '<td><input class="pool-input" data-field="name" aria-label="שם" value="' + U.escapeHtml(t.name) + '"></td>' +
           '<td><select data-field="cohort" aria-label="מחזור">' + U.cohortOptions(t.cohort) + '</select></td>' +
           '<td><select data-field="gender" aria-label="מגדר">' + U.genderOptions(t.gender) + '</select></td>' +
@@ -50,7 +50,7 @@ APP.pools = (function () {
       '<thead><tr><th>שם</th><th>פעיל</th><th></th></tr></thead>' +
       '<tbody>' +
       list.map(function (x) {
-        return '<tr data-id="' + x.id + '">' +
+        return '<tr data-id="' + x.id + '"' + (x.active === false ? ' class="inactive-row"' : '') + '>' +
           '<td><input class="pool-input" data-field="name" aria-label="שם" value="' + U.escapeHtml(x.name) + '"></td>' +
           '<td><input type="checkbox" data-field="active" aria-label="פעיל" ' + (x.active !== false ? 'checked' : '') + '></td>' +
           '<td><button class="btn-tiny btn-danger" data-action="delete-' + poolKey + '">מחק</button></td>' +
@@ -82,7 +82,7 @@ APP.pools = (function () {
         var prefNames = (f.preferredTraineeIds || [])
           .map(function (id) { var t = traineesById[id]; return t ? U.escapeHtml(t.name) : null; })
           .filter(Boolean).join(', ');
-        return '<tr data-id="' + f.id + '">' +
+        return '<tr data-id="' + f.id + '"' + (f.active === false ? ' class="inactive-row"' : '') + '>' +
           '<td><input class="pool-input" data-field="name" aria-label="שם" value="' + U.escapeHtml(f.name) + '"></td>' +
           '<td><input class="pool-input" data-field="phone" aria-label="טלפון" value="' + U.escapeHtml(f.phone || '') + '"></td>' +
           '<td><input class="pool-input" data-field="location" aria-label="מיקום" value="' + U.escapeHtml(f.location || '') + '"></td>' +
@@ -166,7 +166,7 @@ APP.pools = (function () {
       '<tbody>' +
       list.map(function (tpl) {
         var r = tpl.defaultRequirements;
-        return '<tr data-id="' + tpl.id + '">' +
+        return '<tr data-id="' + tpl.id + '"' + (tpl.active === false ? ' class="inactive-row"' : '') + '>' +
           '<td><input class="pool-input" data-field="name" aria-label="שם העבודה" value="' + U.escapeHtml(tpl.name) + '"></td>' +
           '<td><select data-field="strength" aria-label="חוזק">' + U.ratingOptions(r.strength) + '</select></td>' +
           '<td><select data-field="dexterity" aria-label="זריזות">' + U.ratingOptions(r.dexterity) + '</select></td>' +
