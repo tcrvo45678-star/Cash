@@ -124,6 +124,7 @@ APP.state = (function () {
           leader: JSON.parse(JSON.stringify(p.leader)),
           requirements: JSON.parse(JSON.stringify(p.requirements)),
           workerCount: p.workerCount,
+          specialistPercent: (typeof p.specialistPercent === 'number') ? p.specialistPercent : null,
           order: p.order
         };
       });
@@ -145,7 +146,7 @@ APP.state = (function () {
     save();
   }
 
-  function addPost(task, farmerId, leaderId, requirements, workerCount, templateId, transportMethod) {
+  function addPost(task, farmerId, leaderId, requirements, workerCount, templateId, transportMethod, specialistPercent) {
     var post = {
       id: APP.storage.uid('post'),
       templateId: templateId || null,
@@ -154,6 +155,7 @@ APP.state = (function () {
       transportMethod: transportMethod || 'shuttle',
       requirements: requirements,
       workerCount: workerCount,
+      specialistPercent: (typeof specialistPercent === 'number') ? specialistPercent : null,
       order: task.posts.length
     };
     task.posts.push(post);

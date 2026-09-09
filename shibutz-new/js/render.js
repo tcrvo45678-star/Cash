@@ -184,7 +184,8 @@ APP.render = (function () {
 
   var SHORTFALL_TRAIT_LABELS = {
     responsibility: 'אחראיות', leadership: 'הנהגה',
-    'gender-male': 'מינימום בנים', 'gender-female': 'מינימום בנות'
+    'gender-male': 'מינימום בנים', 'gender-female': 'מינימום בנות',
+    specialist: 'אחוז נבחרת'
   };
 
   function shortfallsHtml(task) {
@@ -248,6 +249,8 @@ APP.render = (function () {
 
     if (s.step === 1) {
       var jobTemplates = APP.state.activeOnly(APP.state.get().pools.postTemplates);
+      var selectedTpl = s.templateId ? APP.state.findById(jobTemplates, s.templateId) : null;
+      var squadSize = selectedTpl ? (selectedTpl.specialistTraineeIds || []).length : 0;
       body = "<h4>שלב 1 מתוך 3: חקלאי</h4>" +
         "<select id=\"stepper-farmer-select\">" +
         "<option value=\"\">-- בחר חקלאי קיים --</option>" +
@@ -268,6 +271,10 @@ APP.render = (function () {
           return "<option value=\"" + tpl.id + "\"" + (s.templateId === tpl.id ? " selected" : "") + ">" + U.escapeHtml(tpl.name) + "</option>";
         }).join("") +
         "</select>" +
+        (squadSize > 0
+          ? "<div class=\"or-sep\">אחוז נדרש מ\"הנבחרת\" (" + squadSize + " חניכים מתמקצעים) מתוך שאר החניכים בעמדה - השאר ריק אם אין דרישה:</div>" +
+            "<input type=\"number\" min=\"0\" max=\"100\" id=\"stepper-specialist-percent\" placeholder=\"%\" value=\"" + (s.specialistPercent == null ? "" : s.specialistPercent) + "\">"
+          : "") +
         "<div class=\"row\">" +
         "<button class=\"btn-secondary\" data-action=\"stepper-cancel\">בטל</button>" +
         "<button class=\"btn-primary\" data-action=\"stepper-next-1\">הבא</button>" +
@@ -435,6 +442,21 @@ APP.render = (function () {
       var waterResp = APP.state.findById(APP.state.get().pools.trainees, pa.waterResponsibleId);
       waterResponsibleName = waterResp ? waterResp.name : '-';
     }
+    var squadRow = '';
+    if (typeof post.specialistPercent === 'number' && post.templateId) {
+      var squadTpl = APP.state.findById(APP.state.get().pools.postTemplates, post.templateId);
+      if (squadTpl) {
+        var squadIds = squadTpl.specialistTraineeIds || [];
+        var cap = APP.assign.postCapacity(post);
+        var actualSquadCount = pa ? pa.workerIds.filter(function (w) {
+          return w.t === 'ref' && w.rt === 'trainee' && squadIds.indexOf(w.id) >= 0;
+        }).length : 0;
+        var squadDetail = cap != null
+          ? post.specialistPercent + '% (יעד ' + Math.ceil((post.specialistPercent / 100) * cap) + ') - בפועל ' + actualSquadCount
+          : post.specialistPercent + '% - לא נאכף בעמדה גמישה (בפועל ' + actualSquadCount + ')';
+        squadRow = '<div><dt>נבחרת "' + U.escapeHtml(squadTpl.name) + '"</dt><dd>' + squadDetail + '</dd></div>';
+      }
+    }
     return '<div class="post-req-card">' +
       '<h3>' + U.escapeHtml(leaderName || '(ריק)') + '</h3>' +
       '<dl class="post-req-dl">' +
@@ -451,6 +473,7 @@ APP.render = (function () {
       '<div><dt>אחראי טלפון</dt><dd>' + U.escapeHtml(phoneCarrierName) + '</dd></div>' +
       '<div><dt>אחראי לימוד</dt><dd>' + U.escapeHtml(studyResponsibleName) + '</dd></div>' +
       '<div><dt>אחראי מים</dt><dd>' + U.escapeHtml(waterResponsibleName) + '</dd></div>' +
+      squadRow +
       '</dl>' +
       postActualSummaryHtml(task, post) +
       '</div>';

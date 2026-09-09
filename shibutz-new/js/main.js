@@ -349,7 +349,8 @@
             responsibilityMinCount: { level: 5, count: 0 },
             leadershipMinCount: { level: 5, count: 0 },
             genderMinCount: { male: 0, female: 0 }
-          }
+          },
+          specialistTraineeIds: []
         });
         APP.modal.close();
         APP.pools.renderJobTemplates();
@@ -357,6 +358,23 @@
       }
       if (e.target.closest('[data-action="add-jobtemplate-cancel"]')) {
         APP.modal.close();
+        return;
+      }
+      if (e.target.closest('[data-action="jobtemplate-squad-cancel"]')) {
+        APP.modal.close();
+        return;
+      }
+      if (e.target.closest('[data-action="jobtemplate-squad-save"]')) {
+        var squadSaveBtn = e.target.closest('[data-action="jobtemplate-squad-save"]');
+        var squadTpl = APP.state.findById(APP.state.get().pools.postTemplates, squadSaveBtn.dataset.templateId);
+        if (squadTpl) {
+          squadTpl.specialistTraineeIds = APP.util.qsa('#modal-box input[type="checkbox"][data-trainee-id]')
+            .filter(function (cb) { return cb.checked; })
+            .map(function (cb) { return cb.dataset.traineeId; });
+          APP.state.save();
+        }
+        APP.modal.close();
+        APP.pools.renderJobTemplates();
         return;
       }
       if (e.target.closest('[data-action="task-details-close"]')) {
@@ -384,7 +402,13 @@
     overlay.addEventListener('input', handleCellInput);
     overlay.addEventListener('change', function (e) {
       if (e.target && e.target.id === 'stepper-template-select') {
+        // Sync whatever's already typed in step 1 (farmer name/location/
+        // jobType) into the stepper state first - re-rendering the step to
+        // show/hide the squad-percent field would otherwise wipe those
+        // fields back to their last-saved (empty) value.
+        APP.task.readStep1FromDom();
         APP.task.applyTemplate(e.target.value);
+        APP.modal.setContent(APP.render.postStepperHtml());
       }
     });
   }
@@ -511,6 +535,13 @@
     el.addEventListener('click', function (e) {
       if (e.target.closest('[data-action="add-jobtemplate-start"]')) {
         APP.modal.open(APP.pools.addJobTemplateModalHtml(), { onDismiss: function () { APP.modal.close(); } });
+        return;
+      }
+      var squadBtn = e.target.closest('[data-action="edit-jobtemplate-squad"]');
+      if (squadBtn) {
+        var tpl = APP.state.findById(APP.state.get().pools.postTemplates, squadBtn.dataset.templateId);
+        if (!tpl) return;
+        APP.modal.open(APP.pools.jobTemplateSquadModalHtml(tpl), { onDismiss: function () { APP.modal.close(); } });
         return;
       }
       var delBtn = e.target.closest('[data-action="delete-jobtemplate"]');
