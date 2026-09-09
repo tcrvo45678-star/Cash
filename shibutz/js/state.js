@@ -204,7 +204,7 @@ APP.state = (function () {
       var rest = cellId.slice(5);
       var parts = rest.split(':'); // [postId,'header'] or [postId,'slot',idx]
       var postId = parts[0];
-      var post = task.posts.filter(function (p) { return p.id === postId; })[0];
+      var post = findById(task.posts, postId);
       if (!post) return null;
       if (parts[1] === 'header') {
         return {
@@ -247,7 +247,7 @@ APP.state = (function () {
   }
 
   function assignGuestToPost(task, guestId, postId) {
-    var post = task.posts.filter(function (p) { return p.id === postId; })[0];
+    var post = findById(task.posts, postId);
     if (!post) return false;
     var idx = findGuestSlotIndex(task, post);
     var cell = resolveCell(task, 'post:' + postId + ':slot:' + idx);

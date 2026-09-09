@@ -17,74 +17,63 @@ APP.auth = (function () {
     return 'h' + (h >>> 0).toString(36) + '_' + str.length;
   }
 
-  function isUnlockedThisSession() {
-    try { return sessionStorage.getItem(SESSION_KEY) === '1'; } catch (e) { return false; }
-  }
-  function markUnlocked() {
-    try { sessionStorage.setItem(SESSION_KEY, '1'); } catch (e) {}
-  }
-  function lock() {
-    try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {}
+  // One password-gate "shape" (unlock flag + hash check), parameterized
+  // by which auth field it hashes into and which sessionStorage key holds
+  // its unlock flag - used for both the main site password and the
+  // second, independent gate on the "חניכים" tab.
+  function makeGate(hashField, sessionKey) {
+    function isUnlockedThisSession() {
+      try { return sessionStorage.getItem(sessionKey) === '1'; } catch (e) { return false; }
+    }
+    function markUnlocked() {
+      try { sessionStorage.setItem(sessionKey, '1'); } catch (e) {}
+    }
+    function lock() {
+      try { sessionStorage.removeItem(sessionKey); } catch (e) {}
+    }
+    function hasPassword() {
+      var d = APP.state.get();
+      return !!(d.auth && d.auth[hashField]);
+    }
+    function setPassword(newPassword) {
+      var d = APP.state.get();
+      d.auth = d.auth || {};
+      d.auth[hashField] = simpleHash(newPassword);
+      APP.state.save();
+    }
+    function checkPassword(candidate) {
+      var d = APP.state.get();
+      if (!d.auth || !d.auth[hashField]) return false;
+      return simpleHash(candidate) === d.auth[hashField];
+    }
+    return {
+      isUnlockedThisSession: isUnlockedThisSession,
+      markUnlocked: markUnlocked,
+      lock: lock,
+      hasPassword: hasPassword,
+      setPassword: setPassword,
+      checkPassword: checkPassword
+    };
   }
 
-  function hasPassword() {
-    var d = APP.state.get();
-    return !!(d.auth && d.auth.passwordHash);
-  }
-
-  function setPassword(newPassword) {
-    var d = APP.state.get();
-    d.auth = d.auth || {};
-    d.auth.passwordHash = simpleHash(newPassword);
-    APP.state.save();
-  }
-
-  function checkPassword(candidate) {
-    var d = APP.state.get();
-    if (!d.auth || !d.auth.passwordHash) return false;
-    return simpleHash(candidate) === d.auth.passwordHash;
-  }
-
+  var mainGate = makeGate('passwordHash', SESSION_KEY);
   // Second, independent gate for the "חניכים" tab specifically - same
   // lightweight client-side model as the main password (see note above),
   // just scoped narrower so day-to-day screens (the grid, print, etc.)
   // stay visible without it.
-  function hasTraineesPassword() {
-    var d = APP.state.get();
-    return !!(d.auth && d.auth.traineesPasswordHash);
-  }
-
-  function setTraineesPassword(newPassword) {
-    var d = APP.state.get();
-    d.auth = d.auth || {};
-    d.auth.traineesPasswordHash = simpleHash(newPassword);
-    APP.state.save();
-  }
-
-  function checkTraineesPassword(candidate) {
-    var d = APP.state.get();
-    if (!d.auth || !d.auth.traineesPasswordHash) return false;
-    return simpleHash(candidate) === d.auth.traineesPasswordHash;
-  }
-
-  function isTraineesUnlockedThisSession() {
-    try { return sessionStorage.getItem(TRAINEES_SESSION_KEY) === '1'; } catch (e) { return false; }
-  }
-  function markTraineesUnlocked() {
-    try { sessionStorage.setItem(TRAINEES_SESSION_KEY, '1'); } catch (e) {}
-  }
+  var traineesGate = makeGate('traineesPasswordHash', TRAINEES_SESSION_KEY);
 
   return {
-    isUnlockedThisSession: isUnlockedThisSession,
-    markUnlocked: markUnlocked,
-    lock: lock,
-    hasPassword: hasPassword,
-    setPassword: setPassword,
-    checkPassword: checkPassword,
-    hasTraineesPassword: hasTraineesPassword,
-    setTraineesPassword: setTraineesPassword,
-    checkTraineesPassword: checkTraineesPassword,
-    isTraineesUnlockedThisSession: isTraineesUnlockedThisSession,
-    markTraineesUnlocked: markTraineesUnlocked
+    isUnlockedThisSession: mainGate.isUnlockedThisSession,
+    markUnlocked: mainGate.markUnlocked,
+    lock: mainGate.lock,
+    hasPassword: mainGate.hasPassword,
+    setPassword: mainGate.setPassword,
+    checkPassword: mainGate.checkPassword,
+    hasTraineesPassword: traineesGate.hasPassword,
+    setTraineesPassword: traineesGate.setPassword,
+    checkTraineesPassword: traineesGate.checkPassword,
+    isTraineesUnlockedThisSession: traineesGate.isUnlockedThisSession,
+    markTraineesUnlocked: traineesGate.markUnlocked
   };
 })();
