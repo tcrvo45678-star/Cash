@@ -7,11 +7,11 @@
   --good: #2F7D6E;
   --blue: #5C7A94;
   --ink: #1F332F;
-  --muted: #737C78;
+  --muted: #5C6864;
   --grid: #D8E3DF;
   --icon-bg: #E1F0EC;
   --divider: #E7E3D8;
-  --fs-1: 11px;
+  --fs-1: 12px;
   --fs-2: 13px;
   --fs-3: 15px;
   --fs-4: 18px;
@@ -24,7 +24,9 @@ body {
   color: var(--ink);
   direction: rtl;
   font-size: var(--fs-2);
+  line-height: 1.5;
 }
+h1, h2, h3, h4 { line-height: 1.25; }
 
 .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
 
@@ -74,6 +76,10 @@ input[type="text"], input[type="date"], input[type="password"], input[type="numb
 }
 .num-mini { width: 56px; }
 
+/* Button size scale (do not add a 4th tier):
+   - button/.btn-primary/.btn-secondary/.btn-danger: default, forms & primary actions
+   - .btn-small: compact table-row actions (history.js only)
+   - .btn-tiny: dense inline table/grid actions (pool tables, grid post edit/delete) */
 button {
   font-family: inherit;
   font-size: var(--fs-2);
@@ -97,13 +103,13 @@ button {
 
 .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
 .meta-table th { text-align: right; padding: 6px 10px; color: var(--muted); font-weight: 500; width: 140px; white-space: nowrap; }
-.meta-table td { padding: 4px; }
+.meta-table td { padding: 6px 8px; }
 .meta-table .cell-input { width: 100%; }
 
 .stepper-card {
   background: var(--icon-bg); border-radius: 10px; padding: 16px; margin-top: 8px;
 }
-.stepper-card h4 { margin-bottom: 10px; color: var(--bottle); }
+.stepper-card h4 { font-size: var(--fs-3); margin-bottom: 10px; color: var(--bottle); }
 .stepper-card select, .stepper-card input { width: 100%; margin-bottom: 8px; }
 .or-sep { font-size: var(--fs-1); color: var(--muted); margin: 6px 0 4px; }
 .req-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
@@ -128,7 +134,7 @@ button {
 .guests-row { display: flex; flex-direction: column; gap: 8px; }
 .guests-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .guest-chip { background: var(--icon-bg); padding: 4px 8px; border-radius: 14px; font-size: var(--fs-2); }
-.chip-x { border: none; background: none; padding: 0 0 0 4px; cursor: pointer; color: var(--rust); font-weight: bold; }
+.chip-x { border: none; background: none; padding: 0 0 0 4px; cursor: pointer; color: var(--rust); font-weight: 700; }
 
 .drag-hint { margin-top: 12px; font-size: var(--fs-1); color: var(--muted); }
 
@@ -158,6 +164,7 @@ button {
 @media (max-width: 640px) {
   .assign-table-wrap { display: none; }
   .post-cards { display: block; }
+  .btn-tiny { padding: 10px 12px; min-height: 40px; }
 }
 
 .spare-panel { margin-top: 16px; padding: 12px; background: #FBF4E8; border-radius: 10px; }
@@ -171,6 +178,18 @@ button {
 .cohort-d { background: #BFD7EA; }      /* כחול - מחזור ד / י */
 .cohort-e { background: #CDEAC0; }      /* ירוק בהיר - מחזור ה / ט */
 .cohort-guest { background: #FCEB9A; }  /* צהוב - אורח */
+
+/* Text fallback for cohort color-coding (not color-only): a small
+   superscript letter badge next to the name, so colorblind users and
+   grayscale printing can still tell cohorts apart. */
+.cell-cohort-badge {
+  font-size: 9px;
+  font-weight: 700;
+  vertical-align: super;
+  margin-inline-end: 2px;
+  color: var(--ink);
+  opacity: 0.8;
+}
 
 /* ---- generic swappable cell ---- */
 .cell {
@@ -213,6 +232,7 @@ tr.inactive-row { opacity: 0.5; }
 
 .disclaimer { font-size: var(--fs-1); color: var(--rust); margin-top: 14px; }
 .error-text { color: var(--rust); font-size: var(--fs-2); margin-top: 6px; }
+.text-success { color: var(--good); font-weight: 600; }
 
 /* ---- login ---- */
 .login-screen {
@@ -258,14 +278,7 @@ tr.inactive-row { opacity: 0.5; }
   box-shadow: 0 10px 40px rgba(0,0,0,0.25);
   position: relative;
 }
-.modal-box-close {
-  position: absolute; top: 14px; left: 14px;
-  background: none; border: none; font-size: var(--fs-4);
-  cursor: pointer; color: var(--muted); padding: 0; width: 24px; height: 24px;
-  display: flex; align-items: center; justify-content: center;
-}
-.modal-box-close:hover { color: var(--ink); }
-.modal-box h2 { margin-top: 0; }
+.modal-box h2 { margin-top: 0; font-size: var(--fs-4); color: var(--bottle); font-weight: 700; }
 
 @media (max-width: 600px) {
   .container { padding: 10px; }
