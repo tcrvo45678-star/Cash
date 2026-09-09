@@ -208,7 +208,8 @@ APP.assign = (function () {
     // balanced against each other the same way, by raw headcount so far.
     function closenessCost(trainee, requirements, isPreferred) {
       var cost = Math.abs(trainee.ratings.strength - requirements.strength) +
-        Math.abs(trainee.ratings.dexterity - requirements.dexterity);
+        Math.abs(trainee.ratings.dexterity - requirements.dexterity) +
+        Math.abs(trainee.ratings.fineMotor - requirements.fineMotor);
       return isPreferred ? cost - PREFERENCE_BONUS : cost;
     }
     var openPosts = task.posts.filter(hasOpenCapacity);
@@ -276,17 +277,20 @@ APP.assign = (function () {
     var spare = remaining.map(function (c) { return APP.state.refVal(c.kind || 'trainee', c.id); })
       .concat(leaderQueue.map(function (l) { return APP.state.refVal('leader', l.id); }));
 
-    recomputePhoneCarriers(task, pools, postAssignments);
+    recomputeResponsibleRoles(task, pools, postAssignments);
 
     return { postAssignments: postAssignments, spare: spare, shortfalls: shortfalls };
   }
 
-  // Designates a phone carrier per post (highest responsibility among
-  // assigned trainees, cohort seniority as tiebreak; guests/leaders excluded).
+  // Designates the three per-post responsible roles (phone, study, water) -
+  // same selection method for all three (highest responsibility among
+  // assigned trainees, cohort seniority as tiebreak; guests/leaders
+  // excluded), each role taking the next-best candidate so the three are
+  // always distinct people rather than the same trainee three times over.
   // Called after runAutoAssign and again after any manual drag-swap, since a
-  // swap can move the current carrier out of a post without re-running the
+  // swap can move a current holder out of a post without re-running the
   // full algorithm.
-  function recomputePhoneCarriers(task, pools, postAssignments) {
+  function recomputeResponsibleRoles(task, pools, postAssignments) {
     var traineesById = {};
     (pools.trainees || []).forEach(function (t) { traineesById[t.id] = t; });
     task.posts.forEach(function (post) {
@@ -301,9 +305,11 @@ APP.assign = (function () {
         if (diff !== 0) return diff;
         return APP.util.cohortRank(b.cohort) - APP.util.cohortRank(a.cohort);
       });
-      pa.phoneCarrierId = candidates.length ? candidates[0].id : null;
+      pa.phoneCarrierId = candidates[0] ? candidates[0].id : null;
+      pa.studyResponsibleId = candidates[1] ? candidates[1].id : null;
+      pa.waterResponsibleId = candidates[2] ? candidates[2].id : null;
     });
   }
 
-  return { runAutoAssign: runAutoAssign, recomputePhoneCarriers: recomputePhoneCarriers, postCapacity: postCapacity };
+  return { runAutoAssign: runAutoAssign, recomputeResponsibleRoles: recomputeResponsibleRoles, postCapacity: postCapacity };
 })();

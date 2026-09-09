@@ -3,36 +3,61 @@ window.APP = window.APP || {};
 APP.pools = (function () {
   var U = APP.util;
 
+  var TRAIT_ORDER = ['strength', 'dexterity', 'fineMotor', 'responsibility', 'leadership'];
+  var TRAIT_LABELS = {
+    strength: 'חוזק פיזי', dexterity: 'זריזות ידיים', fineMotor: 'מוטוריקה עדינה',
+    responsibility: 'אחראיות', leadership: 'הנהגה'
+  };
+
   function render() {
     renderTrainees();
     renderLeaders();
     renderFarmers();
   }
 
+  // A rating cell is a button, not free text/a dropdown - clicking it always
+  // opens the trait stepper (add-trainee's step-by-step popup, see
+  // traineeStepperHtml) positioned at that trait, whether or not the
+  // ratings password is set. When it is set and not yet unlocked this
+  // session, the value is masked and main.js's edit-trainee-rating handler
+  // asks for the password before opening the stepper.
+  function ratingCellHtml(trainee, trait) {
+    var locked = APP.auth.hasTraineesPassword() && !APP.auth.isTraineesUnlockedThisSession();
+    return '<button type="button" class="rating-cell-btn" data-action="edit-trainee-rating" ' +
+      'data-trainee-id="' + trainee.id + '" data-trait="' + trait + '" aria-label="' + U.escapeHtml(TRAIT_LABELS[trait]) + '">' +
+      (locked ? '🔒' : trainee.ratings[trait]) + '</button>';
+  }
+
   function renderTrainees() {
     var el = document.getElementById('tab-trainees');
     if (!el) return;
-    var list = APP.state.get().pools.trainees;
+    // Grouped by cohort (contiguous blocks, senior cohort first) purely for
+    // readability - display order only, never touches the underlying array
+    // or any id the auto-assign algorithm relies on.
+    var list = APP.state.get().pools.trainees.slice().sort(function (a, b) {
+      return U.cohortRank(b.cohort) - U.cohortRank(a.cohort);
+    });
     el.innerHTML = '<div class="card">' +
       '<h2>חניכים</h2>' +
-      '<p class="muted">4 דירוגים קבועים בין 1-7 לכל חניך. משתתפים בשיבוץ האוטומטי (אלא אם נעדרים באותו יום).</p>' +
+      '<p class="muted">5 דירוגים קבועים בין 1-7 לכל חניך. משתתפים בשיבוץ האוטומטי (אלא אם נעדרים באותו יום).</p>' +
       '<div class="table-scroll"><table class="pool-table">' +
-      '<thead><tr><th>שם</th><th>מחזור</th><th>מגדר</th><th>חוזק</th><th>זריזות</th><th>אחראיות</th><th>הנהגה</th><th>פעיל</th><th></th></tr></thead>' +
+      '<thead><tr><th>שם</th><th>מחזור</th><th>מגדר</th><th>חוזק</th><th>זריזות</th><th>מוטוריקה עדינה</th><th>אחראיות</th><th>הנהגה</th><th>פעיל</th><th></th></tr></thead>' +
       '<tbody>' +
       list.map(function (t) {
         return '<tr data-id="' + t.id + '"' + (t.active === false ? ' class="inactive-row"' : '') + '>' +
           '<td><input class="pool-input" data-field="name" aria-label="שם" value="' + U.escapeHtml(t.name) + '"></td>' +
           '<td><select data-field="cohort" aria-label="מחזור">' + U.cohortOptions(t.cohort) + '</select></td>' +
           '<td><select data-field="gender" aria-label="מגדר">' + U.genderOptions(t.gender) + '</select></td>' +
-          '<td><select data-field="strength" aria-label="חוזק">' + U.ratingOptions(t.ratings.strength) + '</select></td>' +
-          '<td><select data-field="dexterity" aria-label="זריזות">' + U.ratingOptions(t.ratings.dexterity) + '</select></td>' +
-          '<td><select data-field="responsibility" aria-label="אחראיות">' + U.ratingOptions(t.ratings.responsibility) + '</select></td>' +
-          '<td><select data-field="leadership" aria-label="הנהגה">' + U.ratingOptions(t.ratings.leadership) + '</select></td>' +
+          '<td>' + ratingCellHtml(t, 'strength') + '</td>' +
+          '<td>' + ratingCellHtml(t, 'dexterity') + '</td>' +
+          '<td>' + ratingCellHtml(t, 'fineMotor') + '</td>' +
+          '<td>' + ratingCellHtml(t, 'responsibility') + '</td>' +
+          '<td>' + ratingCellHtml(t, 'leadership') + '</td>' +
           '<td><input type="checkbox" data-field="active" aria-label="פעיל" ' + (t.active !== false ? 'checked' : '') + '></td>' +
           '<td><button class="btn-tiny btn-danger" data-action="delete-trainee">מחק</button></td>' +
           '</tr>';
       }).join('') +
-      (list.length ? '' : '<tr><td colspan="9" class="empty-row">אין חניכים עדיין</td></tr>') +
+      (list.length ? '' : '<tr><td colspan="10" class="empty-row">אין חניכים עדיין</td></tr>') +
       '</tbody></table></div>' +
       '<div class="row add-row">' +
       '<button class="btn-primary" data-action="add-trainee-start">+ הוסף חניך</button>' +
@@ -120,35 +145,123 @@ APP.pools = (function () {
       '</div>';
   }
 
-  function addTraineeModalHtml() {
-    return '<h2>הוסף חניך חדש</h2>' +
-      '<div style="display: flex; flex-direction: column; gap: 10px;">' +
-      '<label><span style="display: block; font-size: var(--fs-1); color: var(--muted); margin-bottom: 4px;">שם</span>' +
-      '<input type="text" id="modal-trainee-name" placeholder="שם החניך" style="width: 100%;">' +
-      '</label>' +
-      '<label><span style="display: block; font-size: var(--fs-1); color: var(--muted); margin-bottom: 4px;">מחזור</span>' +
-      '<select id="modal-trainee-cohort" style="width: 100%;">' + U.cohortOptions('e') + '</select>' +
-      '</label>' +
-      '<label><span style="display: block; font-size: var(--fs-1); color: var(--muted); margin-bottom: 4px;">מגדר</span>' +
-      '<select id="modal-trainee-gender" style="width: 100%;">' + U.genderOptions('m') + '</select>' +
-      '</label>' +
-      '<label><span style="display: block; font-size: var(--fs-1); color: var(--muted); margin-bottom: 4px;">חוזק פיזי</span>' +
-      '<select id="modal-trainee-strength" style="width: 100%;">' + U.ratingOptions(4) + '</select>' +
-      '</label>' +
-      '<label><span style="display: block; font-size: var(--fs-1); color: var(--muted); margin-bottom: 4px;">זריזות ידיים</span>' +
-      '<select id="modal-trainee-dexterity" style="width: 100%;">' + U.ratingOptions(4) + '</select>' +
-      '</label>' +
-      '<label><span style="display: block; font-size: var(--fs-1); color: var(--muted); margin-bottom: 4px;">אחראיות</span>' +
-      '<select id="modal-trainee-responsibility" style="width: 100%;">' + U.ratingOptions(4) + '</select>' +
-      '</label>' +
-      '<label><span style="display: block; font-size: var(--fs-1); color: var(--muted); margin-bottom: 4px;">הנהגה</span>' +
-      '<select id="modal-trainee-leadership" style="width: 100%;">' + U.ratingOptions(4) + '</select>' +
-      '</label>' +
-      '<div class="row" style="margin-top: 12px;">' +
-      '<button class="btn-secondary" data-action="add-trainee-cancel">בטל</button>' +
-      '<button class="btn-primary" data-action="add-trainee-commit">הוסף</button>' +
-      '</div>' +
-      '</div>';
+  // ---- trainee trait entry wizard: one question per step ----
+  // Ratings are picked from a row of 1-7 buttons rather than typed/selected
+  // from a dropdown - tapping a number both sets it and (except when only
+  // touching up a single trait) immediately advances to the next step, so
+  // entering all 5 traits takes 5 taps total instead of opening a dropdown,
+  // scrolling a list and picking an option 5 times over. It works the same
+  // way with a mouse or a finger, unlike a native <select> which is fiddlier
+  // to hit accurately on a touch screen.
+  var traineeStepper = null;
+
+  function startTraineeStepper(existingTrainee) {
+    if (existingTrainee) {
+      traineeStepper = {
+        mode: 'edit',
+        traineeId: existingTrainee.id,
+        singleTrait: false,
+        step: 0,
+        name: existingTrainee.name,
+        cohort: existingTrainee.cohort,
+        gender: existingTrainee.gender,
+        ratings: JSON.parse(JSON.stringify(existingTrainee.ratings))
+      };
+    } else {
+      traineeStepper = {
+        mode: 'add',
+        traineeId: null,
+        singleTrait: false,
+        step: 0,
+        name: '',
+        cohort: 'e',
+        gender: 'm',
+        ratings: { strength: 4, dexterity: 4, fineMotor: 4, responsibility: 4, leadership: 4 }
+      };
+    }
+    return traineeStepper;
+  }
+
+  // Opens the wizard already on one specific trait's step, for editing a
+  // single rating cell - tapping a number there commits right away instead
+  // of walking through the rest of the traits (see traineeStepSetRating).
+  function startTraineeStepperAtTrait(existingTrainee, trait) {
+    startTraineeStepper(existingTrainee);
+    traineeStepper.singleTrait = true;
+    traineeStepper.step = 1 + TRAIT_ORDER.indexOf(trait);
+    return traineeStepper;
+  }
+
+  function getTraineeStepper() { return traineeStepper; }
+  function cancelTraineeStepper() { traineeStepper = null; }
+  function traineeStepperGoTo(n) { if (traineeStepper) traineeStepper.step = n; }
+
+  function readTraineeStepIdentityFromDom() {
+    if (!traineeStepper) return;
+    var nameInp = document.getElementById('trainee-step-name');
+    var cohortSel = document.getElementById('trainee-step-cohort');
+    var genderSel = document.getElementById('trainee-step-gender');
+    traineeStepper.name = nameInp ? nameInp.value : '';
+    traineeStepper.cohort = cohortSel ? cohortSel.value : 'e';
+    traineeStepper.gender = genderSel ? genderSel.value : 'm';
+  }
+
+  function traineeStepSetRating(trait, value) {
+    if (!traineeStepper) return;
+    traineeStepper.ratings[trait] = value;
+  }
+
+  function traineeStepperHtml() {
+    var s = traineeStepper;
+    if (!s) return '';
+    var totalSteps = TRAIT_ORDER.length + 1;
+    var body;
+    if (s.step === 0) {
+      body = '<h4>שלב 1 מתוך ' + totalSteps + ': פרטי החניך</h4>' +
+        '<label>שם<input type="text" id="trainee-step-name" value="' + U.escapeHtml(s.name) + '"></label>' +
+        '<label>מחזור<select id="trainee-step-cohort">' + U.cohortOptions(s.cohort) + '</select></label>' +
+        '<label>מגדר<select id="trainee-step-gender">' + U.genderOptions(s.gender) + '</select></label>' +
+        '<div class="row" style="margin-top:12px;">' +
+        '<button class="btn-secondary" data-action="trainee-step-cancel">בטל</button>' +
+        '<button class="btn-primary" data-action="trainee-step-next-identity">הבא</button>' +
+        '</div>';
+    } else {
+      var trait = TRAIT_ORDER[s.step - 1];
+      var val = s.ratings[trait];
+      body = '<h4>שלב ' + (s.step + 1) + ' מתוך ' + totalSteps + ': ' + U.escapeHtml(TRAIT_LABELS[trait]) + '</h4>' +
+        '<p class="muted">בחר/י דירוג בין 1 (נמוך) ל-7 (גבוה):</p>' +
+        '<div class="rating-button-row">' +
+        [1, 2, 3, 4, 5, 6, 7].map(function (n) {
+          return '<button type="button" class="rating-btn' + (val === n ? ' active' : '') + '" ' +
+            'data-action="trainee-step-set-rating" data-trait="' + trait + '" data-value="' + n + '">' + n + '</button>';
+        }).join('') +
+        '</div>' +
+        '<div class="row" style="margin-top:12px;">' +
+        '<button class="btn-secondary" data-action="trainee-step-cancel">בטל</button>' +
+        '<button class="btn-secondary" data-action="trainee-step-back">חזור</button>' +
+        '</div>';
+    }
+    return '<div class="stepper-card">' + body + '</div>';
+  }
+
+  function commitTraineeStepper() {
+    var s = traineeStepper;
+    if (!s) return false;
+    if (!s.name || !s.name.trim()) { alert('יש להזין שם'); return false; }
+    if (s.mode === 'add') {
+      APP.state.addTrainee(s.name.trim(), s.ratings, s.cohort, s.gender);
+    } else {
+      var t = APP.state.findById(APP.state.get().pools.trainees, s.traineeId);
+      if (t) {
+        t.name = s.name.trim();
+        t.cohort = s.cohort;
+        t.gender = s.gender;
+        t.ratings = s.ratings;
+        APP.state.save();
+      }
+    }
+    traineeStepper = null;
+    return true;
   }
 
   // A library of recurring job profiles ("עבודות קבועות") - the user
@@ -162,7 +275,7 @@ APP.pools = (function () {
       '<h2>עבודות קבועות</h2>' +
       '<p class="muted">הגדר/י כאן פרופילי עבודה קבועים (הדרישות שחניך צריך לעמוד בהן) - בעת הוספת עמדה חדשה אפשר לבחור עבודה קבועה ולמלא אוטומטית את הדרישות.</p>' +
       '<div class="table-scroll"><table class="pool-table">' +
-      '<thead><tr><th>שם העבודה</th><th>חוזק</th><th>זריזות</th><th>אחראיות (רמה/כמות)</th><th>הנהגה (רמה/כמות)</th><th>מגדר מינ׳ (בנים/בנות)</th><th>מס׳ עובדים</th><th>פעיל</th><th></th></tr></thead>' +
+      '<thead><tr><th>שם העבודה</th><th>חוזק</th><th>זריזות</th><th>מוטוריקה עדינה</th><th>אחראיות (רמה/כמות)</th><th>הנהגה (רמה/כמות)</th><th>מגדר מינ׳ (בנים/בנות)</th><th>מס׳ עובדים</th><th>פעיל</th><th></th></tr></thead>' +
       '<tbody>' +
       list.map(function (tpl) {
         var r = tpl.defaultRequirements;
@@ -170,6 +283,7 @@ APP.pools = (function () {
           '<td><input class="pool-input" data-field="name" aria-label="שם העבודה" value="' + U.escapeHtml(tpl.name) + '"></td>' +
           '<td><select data-field="strength" aria-label="חוזק">' + U.ratingOptions(r.strength) + '</select></td>' +
           '<td><select data-field="dexterity" aria-label="זריזות">' + U.ratingOptions(r.dexterity) + '</select></td>' +
+          '<td><select data-field="fineMotor" aria-label="מוטוריקה עדינה">' + U.ratingOptions(r.fineMotor) + '</select></td>' +
           '<td class="req-pair"><select data-field="resp-level" aria-label="אחראיות רמה">' + U.ratingOptions(r.responsibilityMinCount.level) + '</select>' +
             '<input type="number" min="0" data-field="resp-count" aria-label="אחראיות כמות" value="' + r.responsibilityMinCount.count + '"></td>' +
           '<td class="req-pair"><select data-field="lead-level" aria-label="הנהגה רמה">' + U.ratingOptions(r.leadershipMinCount.level) + '</select>' +
@@ -181,7 +295,7 @@ APP.pools = (function () {
           '<td><button class="btn-tiny btn-danger" data-action="delete-jobtemplate">מחק</button></td>' +
           '</tr>';
       }).join('') +
-      (list.length ? '' : '<tr><td colspan="9" class="empty-row">אין עבודות קבועות עדיין</td></tr>') +
+      (list.length ? '' : '<tr><td colspan="10" class="empty-row">אין עבודות קבועות עדיין</td></tr>') +
       '</tbody></table></div>' +
       '<div class="row add-row">' +
       '<button class="btn-primary" data-action="add-jobtemplate-start">+ הוסף עבודה קבועה</button>' +
@@ -201,6 +315,9 @@ APP.pools = (function () {
       '<label><span style="display: block; font-size: var(--fs-1); color: var(--muted); margin-bottom: 4px;">זריזות ידיים נדרשת</span>' +
       '<select id="modal-jobtemplate-dexterity" style="width: 100%;">' + U.ratingOptions(4) + '</select>' +
       '</label>' +
+      '<label><span style="display: block; font-size: var(--fs-1); color: var(--muted); margin-bottom: 4px;">מוטוריקה עדינה נדרשת</span>' +
+      '<select id="modal-jobtemplate-finemotor" style="width: 100%;">' + U.ratingOptions(4) + '</select>' +
+      '</label>' +
       '<label><span style="display: block; font-size: var(--fs-1); color: var(--muted); margin-bottom: 4px;">מספר עובדים (השאר ריק לגמיש)</span>' +
       '<input type="number" min="1" id="modal-jobtemplate-workercount" style="width: 100%;">' +
       '</label>' +
@@ -218,8 +335,16 @@ APP.pools = (function () {
     renderLeaders: renderLeaders,
     renderFarmers: renderFarmers,
     renderJobTemplates: renderJobTemplates,
-    addTraineeModalHtml: addTraineeModalHtml,
     addJobTemplateModalHtml: addJobTemplateModalHtml,
-    farmerPrefsModalHtml: farmerPrefsModalHtml
+    farmerPrefsModalHtml: farmerPrefsModalHtml,
+    startTraineeStepper: startTraineeStepper,
+    startTraineeStepperAtTrait: startTraineeStepperAtTrait,
+    getTraineeStepper: getTraineeStepper,
+    cancelTraineeStepper: cancelTraineeStepper,
+    traineeStepperGoTo: traineeStepperGoTo,
+    readTraineeStepIdentityFromDom: readTraineeStepIdentityFromDom,
+    traineeStepSetRating: traineeStepSetRating,
+    traineeStepperHtml: traineeStepperHtml,
+    commitTraineeStepper: commitTraineeStepper
   };
 })();

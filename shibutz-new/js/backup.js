@@ -20,16 +20,20 @@ APP.backup = (function () {
 
   function buildPayload() {
     var d = APP.state.get();
-    var trainees = [['id', 'name', 'cohort', 'gender', 'strength', 'dexterity', 'responsibility', 'leadership', 'active']]
+    var traineesById = {};
+    (d.pools.trainees || []).forEach(function (t) { traineesById[t.id] = t; });
+    var trainees = [['id', 'name', 'cohort', 'gender', 'strength', 'dexterity', 'fineMotor', 'responsibility', 'leadership', 'active']]
       .concat((d.pools.trainees || []).map(function (t) {
         return [t.id, t.name, t.cohort, t.gender, t.ratings.strength, t.ratings.dexterity,
-          t.ratings.responsibility, t.ratings.leadership, t.active !== false];
+          t.ratings.fineMotor, t.ratings.responsibility, t.ratings.leadership, t.active !== false];
       }));
     var leaders = [['id', 'name', 'active']]
       .concat((d.pools.leaders || []).map(function (l) { return [l.id, l.name, l.active !== false]; }));
-    var farmers = [['id', 'name', 'phone', 'location', 'jobType', 'active']]
+    var farmers = [['id', 'name', 'phone', 'location', 'jobType', 'preferredTraineeIds', 'preferredTraineeNames', 'active']]
       .concat((d.pools.farmers || []).map(function (f) {
-        return [f.id, f.name, f.phone || '', f.location || '', f.jobType || '', f.active !== false];
+        var prefIds = f.preferredTraineeIds || [];
+        var prefNames = prefIds.map(function (id) { var t = traineesById[id]; return t ? t.name : null; }).filter(Boolean).join(', ');
+        return [f.id, f.name, f.phone || '', f.location || '', f.jobType || '', prefIds.join(';'), prefNames, f.active !== false];
       }));
 
     var taskLog = [['date', 'farmer', 'leader', 'transportMethod', 'workerName', 'workerType']];
@@ -83,5 +87,65 @@ APP.backup = (function () {
       .catch(function () { cb(false); });
   }
 
-  return { getUrl: getUrl, setUrl: setUrl, buildPayload: buildPayload, onSave: onSave, sendNow: sendNow, testConnection: testConnection };
+  // Sheet rows come back as [header, ...dataRows] arrays-of-arrays - turn
+  // each data row into an object keyed by the header's column names.
+  function rowsToObjects(rows) {
+    if (!rows || !rows.length) return [];
+    var header = rows[0];
+    return rows.slice(1)
+      .filter(function (row) { return row[0] !== '' && row[0] != null; })
+      .map(function (row) {
+        var obj = {};
+        header.forEach(function (key, i) { obj[key] = row[i]; });
+        return obj;
+      });
+  }
+
+  // Pull direction: fetches the trainees/leaders/farmers pool tabs back
+  // from the sheet and replaces this device's pools with them, the same
+  // "full snapshot" model as the push - lets qualities/preferences entered
+  // on one device show up on another after both have backed up/pulled at
+  // least once. Tasks/assignments are never touched by this.
+  function pullFromBackup(cb) {
+    var url = getUrl();
+    if (!url) { cb(new Error('no backup url configured')); return; }
+    var sep = url.indexOf('?') >= 0 ? '&' : '?';
+    fetch(url + sep + 'pull=1')
+      .then(function (r) { return r.json(); })
+      .then(function (json) {
+        var d = APP.state.get();
+        d.pools.trainees = rowsToObjects(json.trainees).map(function (row) {
+          return {
+            id: String(row.id), name: String(row.name || ''),
+            cohort: String(row.cohort || 'e'), gender: String(row.gender || 'm'),
+            ratings: {
+              strength: Number(row.strength) || 4, dexterity: Number(row.dexterity) || 4,
+              fineMotor: Number(row.fineMotor) || 4, responsibility: Number(row.responsibility) || 4,
+              leadership: Number(row.leadership) || 4
+            },
+            active: row.active !== false
+          };
+        });
+        d.pools.leaders = rowsToObjects(json.leaders).map(function (row) {
+          return { id: String(row.id), name: String(row.name || ''), active: row.active !== false };
+        });
+        d.pools.farmers = rowsToObjects(json.farmers).map(function (row) {
+          return {
+            id: String(row.id), name: String(row.name || ''),
+            phone: String(row.phone || ''), location: String(row.location || ''), jobType: String(row.jobType || ''),
+            preferredTraineeIds: row.preferredTraineeIds ? String(row.preferredTraineeIds).split(';').filter(Boolean) : [],
+            active: row.active !== false
+          };
+        });
+        APP.storage.migrate(d);
+        APP.state.save();
+        cb(null);
+      })
+      .catch(function (err) { cb(err); });
+  }
+
+  return {
+    getUrl: getUrl, setUrl: setUrl, buildPayload: buildPayload, onSave: onSave, sendNow: sendNow,
+    testConnection: testConnection, pullFromBackup: pullFromBackup
+  };
 })();

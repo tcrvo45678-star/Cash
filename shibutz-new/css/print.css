@@ -3,6 +3,8 @@
   margin: 12mm;
 }
 
+:root { --print-scale: 1; }
+
 body {
   background: white !important;
 }
@@ -46,14 +48,35 @@ body {
 .assign-table {
   width: 100%;
   border: 2px solid black;
+  font-size: calc(var(--fs-2) * var(--print-scale));
 }
 .assign-table th, .assign-table td {
   border: 1px solid #444 !important;
   print-color-adjust: exact;
   -webkit-print-color-adjust: exact;
 }
-.assign-table th { background: #eee !important; }
+.assign-table th {
+  background: #eee !important;
+  padding: calc(6px * var(--print-scale));
+  min-width: calc(140px * var(--print-scale));
+}
 .assign-table tr { page-break-inside: avoid; }
+.assign-table .grid-cell { padding: calc(10px * var(--print-scale)) calc(8px * var(--print-scale)); }
+.assign-table .post-leader-name { font-size: calc(var(--fs-3) * var(--print-scale)); }
+.assign-table .post-farmer-name,
+.assign-table .post-farmer-details,
+.assign-table .post-worker-count,
+.assign-table .post-transport { font-size: calc(var(--fs-1) * var(--print-scale)); }
+
+.post-req-card { font-size: calc(var(--fs-2) * var(--print-scale)); padding: calc(14px * var(--print-scale)) calc(16px * var(--print-scale)); }
+.post-req-card h3 { font-size: calc(var(--fs-3) * var(--print-scale)); }
+.post-req-card h4 { font-size: inherit; }
+.post-req-dl dt, .post-req-dl dd { font-size: inherit; }
+.post-req-list { gap: calc(14px * var(--print-scale)) !important; }
+
+.post-card { padding: calc(10px * var(--print-scale)) !important; font-size: calc(var(--fs-2) * var(--print-scale)); }
+.post-card-slots { gap: calc(6px * var(--print-scale)) !important; }
+.post-card-cell { padding: calc(10px * var(--print-scale)) !important; }
 
 .post-leader-name { color: black !important; }
 .empty-cell { background: none !important; }
