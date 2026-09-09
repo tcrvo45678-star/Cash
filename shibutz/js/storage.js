@@ -42,6 +42,7 @@ APP.storage = (function () {
       if (tpl.defaultRequirements && typeof tpl.defaultRequirements.fineMotor !== 'number') {
         tpl.defaultRequirements.fineMotor = 4;
       }
+      if (!Array.isArray(tpl.specialistTraineeIds)) tpl.specialistTraineeIds = [];
     });
     data.tasks = data.tasks || [];
     data.tasks.forEach(function (task) {
@@ -54,6 +55,7 @@ APP.storage = (function () {
         if (!r.responsibilityMinCount) r.responsibilityMinCount = { level: 5, count: 1 };
         if (!r.leadershipMinCount) r.leadershipMinCount = { level: 5, count: 1 };
         if (!r.genderMinCount) r.genderMinCount = { male: 0, female: 0 };
+        if (typeof post.specialistPercent === 'undefined') post.specialistPercent = null;
       });
     });
     if (typeof data.currentTaskId === 'undefined') data.currentTaskId = null;

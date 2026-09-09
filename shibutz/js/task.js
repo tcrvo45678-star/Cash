@@ -76,7 +76,8 @@ APP.task = (function () {
         transportMethod: existingPost.transportMethod || 'shuttle',
         templateId: existingPost.templateId || '',
         requirements: JSON.parse(JSON.stringify(existingPost.requirements)),
-        workerCount: existingPost.workerCount
+        workerCount: existingPost.workerCount,
+        specialistPercent: (typeof existingPost.specialistPercent === 'number') ? existingPost.specialistPercent : null
       };
     } else {
       stepper = {
@@ -95,7 +96,8 @@ APP.task = (function () {
           leadershipMinCount: { level: 5, count: 1 },
           genderMinCount: { male: 0, female: 0 }
         },
-        workerCount: 3
+        workerCount: 3,
+        specialistPercent: null
       };
     }
     return stepper;
@@ -108,6 +110,7 @@ APP.task = (function () {
   function applyTemplate(templateId) {
     if (!stepper) return;
     stepper.templateId = templateId;
+    stepper.specialistPercent = null; // squad % is asked fresh for whichever template is now selected
     var tpl = APP.state.findById(APP.state.get().pools.postTemplates, templateId);
     if (tpl) {
       stepper.requirements = JSON.parse(JSON.stringify(tpl.defaultRequirements));
@@ -122,11 +125,15 @@ APP.task = (function () {
     var tplSel = document.getElementById('stepper-template-select');
     var locationInp = document.getElementById('stepper-farmer-location');
     var jobTypeInp = document.getElementById('stepper-farmer-jobtype');
+    var specialistInp = document.getElementById('stepper-specialist-percent');
     stepper.farmerId = sel ? sel.value : '';
     stepper.newFarmerName = newName ? newName.value : '';
     stepper.location = locationInp ? locationInp.value : '';
     stepper.jobType = jobTypeInp ? jobTypeInp.value : '';
     if (tplSel) stepper.templateId = tplSel.value || '';
+    if (specialistInp) {
+      stepper.specialistPercent = specialistInp.value === '' ? null : Math.max(0, Math.min(100, parseInt(specialistInp.value, 10) || 0));
+    }
   }
 
   function readStep2FromDom() {
@@ -177,11 +184,12 @@ APP.task = (function () {
         post.requirements = stepper.requirements;
         post.workerCount = stepper.workerCount;
         post.templateId = stepper.templateId || null;
+        post.specialistPercent = stepper.specialistPercent;
         t.updatedAt = Date.now();
         APP.state.save();
       }
     } else {
-      APP.state.addPost(t, farmerId, stepper.leaderId, stepper.requirements, stepper.workerCount, stepper.templateId || null, stepper.transportMethod);
+      APP.state.addPost(t, farmerId, stepper.leaderId, stepper.requirements, stepper.workerCount, stepper.templateId || null, stepper.transportMethod, stepper.specialistPercent);
     }
     stepper = null;
     return true;

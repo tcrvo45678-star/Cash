@@ -134,6 +134,94 @@ APP.assign = (function () {
     var remaining = trainees.map(function (t) { return { id: t.id, trainee: t, kind: 'trainee' }; })
       .concat((task.extraGuests || []).map(function (g) { return { id: g.id, trainee: g, kind: 'guest' }; }));
 
+    // unsatisfiable[postId|trait] feeds the shortfalls list built at the end -
+    // shared by every phase below (specialists, quota traits) that reports
+    // "couldn't meet this requirement" the same way, so declared once here.
+    var unsatisfiable = {};
+
+    // Cost only depends on the POST's requirements, so every open slot in
+    // the same post is identical - evaluate per post, not per slot. Used
+    // below by both Phase 0 (ranking competing squad members for one post)
+    // and Phase 2 (picking who fills a post's remaining open slots).
+    function closenessCost(trainee, requirements, isPreferred) {
+      var cost = Math.abs(trainee.ratings.strength - requirements.strength) +
+        Math.abs(trainee.ratings.dexterity - requirements.dexterity) +
+        Math.abs(trainee.ratings.fineMotor - requirements.fineMotor);
+      return isPreferred ? cost - PREFERENCE_BONUS : cost;
+    }
+
+    // ---- Phase 0: specialist "squad" quota, dominant over every other trait ----
+    // A post can require that some % of its (non-leader) capacity come from
+    // a job template's "squad" (postTemplates[].specialistTraineeIds) - this
+    // runs before anything else so those seats are locked in first. Squad
+    // membership is binary (no 1-7 "level" to relax like a rating), so a
+    // shortage degrades the same way gender quotas do below: report it via
+    // the shared `unsatisfiable` map and move on, rather than inventing a
+    // new relaxation mechanism. Flexible posts (workerCount == null) have no
+    // fixed capacity to take a % of, so the requirement isn't enforced on
+    // them - a squad member can still land there via the normal phases.
+    var postsById = {};
+    task.posts.forEach(function (post) { postsById[post.id] = post; });
+    var postTemplatesById = {};
+    (pools.postTemplates || []).forEach(function (tpl) { postTemplatesById[tpl.id] = tpl; });
+    var specialistTargets = {};
+    task.posts.forEach(function (post) {
+      if (typeof post.specialistPercent !== 'number' || !post.templateId) return;
+      var tpl = postTemplatesById[post.templateId];
+      var squadIds = tpl ? (tpl.specialistTraineeIds || []) : [];
+      var cap = capacityFor(post);
+      if (cap === Infinity || !squadIds.length) return;
+      var count = Math.ceil((post.specialistPercent / 100) * cap);
+      if (count > 0) specialistTargets[post.id] = { count: count, squadIds: squadIds };
+    });
+
+    function specialistHave(postId) {
+      var squadIds = specialistTargets[postId].squadIds;
+      return assignedByPost[postId].filter(function (c) { return c.kind === 'trainee' && squadIds.indexOf(c.id) >= 0; }).length;
+    }
+    function specialistAvailableCount(postId) {
+      var squadIds = specialistTargets[postId].squadIds;
+      return remaining.filter(function (c) { return c.kind === 'trainee' && squadIds.indexOf(c.id) >= 0; }).length;
+    }
+
+    var pendingSpecialistPosts = Object.keys(specialistTargets);
+    while (pendingSpecialistPosts.length) {
+      pendingSpecialistPosts = pendingSpecialistPosts.filter(function (postId) {
+        return specialistHave(postId) < specialistTargets[postId].count && openCapacity(postsById[postId]) > 0;
+      });
+      if (!pendingSpecialistPosts.length) break;
+      // Scarcity-based priority: the post whose own squad has the fewest
+      // people still available goes first each round, recomputed every
+      // time since placing someone shrinks availability for whoever else
+      // is competing over the same specialists.
+      pendingSpecialistPosts.sort(function (a, b) { return specialistAvailableCount(a) - specialistAvailableCount(b); });
+      var specialistPostId = pendingSpecialistPosts[0];
+      var specialistPost = postsById[specialistPostId];
+      var squadIds = specialistTargets[specialistPostId].squadIds;
+      var squadCandidates = remaining.filter(function (c) { return c.kind === 'trainee' && squadIds.indexOf(c.id) >= 0; });
+      if (!squadCandidates.length) {
+        pendingSpecialistPosts = pendingSpecialistPosts.filter(function (id) { return id !== specialistPostId; });
+        continue;
+      }
+      // Among several specialists competing for this one post, still rank
+      // by the regular fit criteria (closeness to the post's own
+      // strength/dexterity/fineMotor requirements) - the dominance is about
+      // WHETHER a squad member fills the seat, not about ignoring fit once
+      // several are available.
+      squadCandidates.sort(function (a, b) {
+        return closenessCost(a.trainee, specialistPost.requirements, isPreferredFor(a.id, specialistPostId)) -
+          closenessCost(b.trainee, specialistPost.requirements, isPreferredFor(b.id, specialistPostId));
+      });
+      var chosenSpecialist = squadCandidates[0];
+      assignedByPost[specialistPostId].push(chosenSpecialist);
+      remaining = remaining.filter(function (c) { return c.id !== chosenSpecialist.id; });
+    }
+    Object.keys(specialistTargets).forEach(function (postId) {
+      if (specialistHave(postId) < specialistTargets[postId].count) {
+        unsatisfiable[postId + '|specialist'] = true;
+      }
+    });
+
     // ---- Phase 1: quota traits, interleaved by urgency, gradual relaxation ----
     var quotaTraits = ['responsibility', 'leadership', 'gender-male', 'gender-female'];
     var relaxedLevel = {};
@@ -145,7 +233,6 @@ APP.assign = (function () {
         'gender-female': 1
       };
     });
-    var unsatisfiable = {};
 
     while (remaining.length) {
       var best = null;
@@ -206,12 +293,8 @@ APP.assign = (function () {
     // the best matches); flexible (unlimited) posts only start receiving
     // people once every fixed post has reached its target, and are then
     // balanced against each other the same way, by raw headcount so far.
-    function closenessCost(trainee, requirements, isPreferred) {
-      var cost = Math.abs(trainee.ratings.strength - requirements.strength) +
-        Math.abs(trainee.ratings.dexterity - requirements.dexterity) +
-        Math.abs(trainee.ratings.fineMotor - requirements.fineMotor);
-      return isPreferred ? cost - PREFERENCE_BONUS : cost;
-    }
+    // (closenessCost itself is defined up in Phase 0, since that phase needs
+    // it too.)
     var openPosts = task.posts.filter(hasOpenCapacity);
     while (remaining.length && openPosts.length) {
       var fixedOpen = openPosts.filter(function (p) { return capacityFor(p) !== Infinity; });

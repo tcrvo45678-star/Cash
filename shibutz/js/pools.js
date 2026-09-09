@@ -275,10 +275,11 @@ APP.pools = (function () {
       '<h2>עבודות קבועות</h2>' +
       '<p class="muted">הגדר/י כאן פרופילי עבודה קבועים (הדרישות שחניך צריך לעמוד בהן) - בעת הוספת עמדה חדשה אפשר לבחור עבודה קבועה ולמלא אוטומטית את הדרישות.</p>' +
       '<div class="table-scroll"><table class="pool-table">' +
-      '<thead><tr><th>שם העבודה</th><th>חוזק</th><th>זריזות</th><th>מוטוריקה עדינה</th><th>אחראיות (רמה/כמות)</th><th>הנהגה (רמה/כמות)</th><th>מגדר מינ׳ (בנים/בנות)</th><th>מס׳ עובדים</th><th>פעיל</th><th></th></tr></thead>' +
+      '<thead><tr><th>שם העבודה</th><th>חוזק</th><th>זריזות</th><th>מוטוריקה עדינה</th><th>אחראיות (רמה/כמות)</th><th>הנהגה (רמה/כמות)</th><th>מגדר מינ׳ (בנים/בנות)</th><th>מס׳ עובדים</th><th>נבחרת</th><th>פעיל</th><th></th></tr></thead>' +
       '<tbody>' +
       list.map(function (tpl) {
         var r = tpl.defaultRequirements;
+        var squadCount = (tpl.specialistTraineeIds || []).length;
         return '<tr data-id="' + tpl.id + '"' + (tpl.active === false ? ' class="inactive-row"' : '') + '>' +
           '<td><input class="pool-input" data-field="name" aria-label="שם העבודה" value="' + U.escapeHtml(tpl.name) + '"></td>' +
           '<td><select data-field="strength" aria-label="חוזק">' + U.ratingOptions(r.strength) + '</select></td>' +
@@ -291,15 +292,40 @@ APP.pools = (function () {
           '<td class="req-pair"><input type="number" min="0" data-field="gender-male" aria-label="מינ׳ בנים" value="' + r.genderMinCount.male + '">' +
             '<input type="number" min="0" data-field="gender-female" aria-label="מינ׳ בנות" value="' + r.genderMinCount.female + '"></td>' +
           '<td><input type="number" min="1" data-field="workerCount" aria-label="מספר עובדים" placeholder="גמיש" value="' + (tpl.defaultWorkerCount == null ? '' : tpl.defaultWorkerCount) + '"></td>' +
+          '<td><span class="muted">' + squadCount + ' חניכים</span> ' +
+            '<button class="btn-tiny" data-action="edit-jobtemplate-squad" data-template-id="' + tpl.id + '">ערוך נבחרת</button></td>' +
           '<td><input type="checkbox" data-field="active" aria-label="פעיל" ' + (tpl.active !== false ? 'checked' : '') + '></td>' +
           '<td><button class="btn-tiny btn-danger" data-action="delete-jobtemplate">מחק</button></td>' +
           '</tr>';
       }).join('') +
-      (list.length ? '' : '<tr><td colspan="10" class="empty-row">אין עבודות קבועות עדיין</td></tr>') +
+      (list.length ? '' : '<tr><td colspan="11" class="empty-row">אין עבודות קבועות עדיין</td></tr>') +
       '</tbody></table></div>' +
       '<div class="row add-row">' +
       '<button class="btn-primary" data-action="add-jobtemplate-start">+ הוסף עבודה קבועה</button>' +
       '</div>' +
+      '</div>';
+  }
+
+  // "הנבחרת" of a job template - the trainees who specialize in that job -
+  // is edited via the same checklist-popup pattern already used for a
+  // farmer's preferred trainees (farmerPrefsModalHtml above): a popup
+  // replaces inline editing for a multi-select-trainees task, matching the
+  // "edit via popup, not inline" direction the trainees tab already took.
+  function jobTemplateSquadModalHtml(tpl) {
+    var trainees = APP.state.get().pools.trainees;
+    var selected = tpl.specialistTraineeIds || [];
+    return '<h2>הנבחרת של "' + U.escapeHtml(tpl.name) + '"</h2>' +
+      '<p class="muted">חניכים אלה נחשבים מתמקצעים בעבודה זו - השיבוץ האוטומטי יעדיף למלא מהם את אחוז ה"נבחרת" שמוגדר בעת פתיחת עמדה מסוג זה.</p>' +
+      '<div class="pref-checklist">' +
+      trainees.map(function (t) {
+        var checked = selected.indexOf(t.id) >= 0;
+        return '<label class="absent-item"><input type="checkbox" data-trainee-id="' + t.id + '" ' +
+          (checked ? 'checked' : '') + '>' + U.escapeHtml(t.name) + '</label>';
+      }).join('') +
+      '</div>' +
+      '<div class="row" style="margin-top:12px;">' +
+      '<button class="btn-secondary" data-action="jobtemplate-squad-cancel">בטל</button>' +
+      '<button class="btn-primary" data-action="jobtemplate-squad-save" data-template-id="' + tpl.id + '">שמור</button>' +
       '</div>';
   }
 
@@ -336,6 +362,7 @@ APP.pools = (function () {
     renderFarmers: renderFarmers,
     renderJobTemplates: renderJobTemplates,
     addJobTemplateModalHtml: addJobTemplateModalHtml,
+    jobTemplateSquadModalHtml: jobTemplateSquadModalHtml,
     farmerPrefsModalHtml: farmerPrefsModalHtml,
     startTraineeStepper: startTraineeStepper,
     startTraineeStepperAtTrait: startTraineeStepperAtTrait,
