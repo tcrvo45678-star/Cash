@@ -27,6 +27,7 @@ APP.storage = (function () {
     data.pools.trainees.forEach(function (t) {
       if (!t.cohort) t.cohort = 'e';
       if (!t.gender) t.gender = 'm';
+      if (typeof t.ratings.fineMotor !== 'number') t.ratings.fineMotor = 4;
     });
     data.pools.leaders = data.pools.leaders || [];
     data.pools.farmers = data.pools.farmers || [];
@@ -37,6 +38,11 @@ APP.storage = (function () {
       if (!Array.isArray(f.preferredTraineeIds)) f.preferredTraineeIds = [];
     });
     data.pools.postTemplates = data.pools.postTemplates || [];
+    data.pools.postTemplates.forEach(function (tpl) {
+      if (tpl.defaultRequirements && typeof tpl.defaultRequirements.fineMotor !== 'number') {
+        tpl.defaultRequirements.fineMotor = 4;
+      }
+    });
     data.tasks = data.tasks || [];
     data.tasks.forEach(function (task) {
       (task.posts || []).forEach(function (post) {
@@ -44,6 +50,7 @@ APP.storage = (function () {
         var r = post.requirements;
         if (typeof r.strength !== 'number') r.strength = 4;
         if (typeof r.dexterity !== 'number') r.dexterity = 4;
+        if (typeof r.fineMotor !== 'number') r.fineMotor = 4;
         if (!r.responsibilityMinCount) r.responsibilityMinCount = { level: 5, count: 1 };
         if (!r.leadershipMinCount) r.leadershipMinCount = { level: 5, count: 1 };
         if (!r.genderMinCount) r.genderMinCount = { male: 0, female: 0 };
@@ -111,5 +118,5 @@ APP.storage = (function () {
     reader.readAsText(file);
   }
 
-  return { load: load, save: save, uid: uid, exportJSON: exportJSON, importJSON: importJSON };
+  return { load: load, save: save, uid: uid, exportJSON: exportJSON, importJSON: importJSON, migrate: migrate };
 })();

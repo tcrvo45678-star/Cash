@@ -38,6 +38,35 @@
   function exitPreview() {
     document.getElementById('print-stylesheet').media = 'print';
     document.getElementById('preview-toolbar').hidden = true;
+    resetPrintFit();
+  }
+
+  // Shrinks print text/padding (via the --print-scale custom property
+  // print.css scales its font-size/padding rules by) until the printed
+  // page's content fits one A4-landscape page height - a fixed font size
+  // can't guarantee that across a variable number of posts/rows, so this
+  // measures the actual rendered height and backs off until it fits.
+  var PRINT_SCALE_MIN = 0.5;
+  function fitPrintToPage() {
+    resetPrintFit();
+    var content = document.querySelector('.tab-content.active .card');
+    if (!content) return;
+    var mmToPx = 96 / 25.4;
+    var pageHeightPx = (210 - 24) * mmToPx;
+    var scale = 1;
+    while (content.scrollHeight > pageHeightPx && scale > PRINT_SCALE_MIN) {
+      scale = Math.round((scale - 0.05) * 100) / 100;
+      document.documentElement.style.setProperty('--print-scale', scale);
+    }
+  }
+
+  function resetPrintFit() {
+    document.documentElement.style.removeProperty('--print-scale');
+  }
+
+  function preparePrint() {
+    document.getElementById('print-stylesheet').media = 'all';
+    fitPrintToPage();
   }
 
   function resetPasswordToggles() {
@@ -62,29 +91,25 @@
     });
   }
 
-  // The "חניכים" tab can be gated behind its own password (set in
-  // Settings), separate from the app's main login - opt-in: if no
-  // trainees password is configured, this behaves exactly like before.
-  function renderTraineesTabGated() {
-    var el = document.getElementById('tab-trainees');
-    if (!el) return;
-    if (!APP.auth.hasTraineesPassword() || APP.auth.isTraineesUnlockedThisSession()) {
-      APP.pools.renderTrainees();
-      return;
+  // Ratings (not the whole "חניכים" tab - names/cohort/gender always show)
+  // can be gated behind their own password, set in Settings, separate from
+  // the app's main login. Opt-in: if no ratings password is configured,
+  // this just runs the callback straight away. Unlocking is per-session,
+  // same lightweight model as the main password.
+  function ensureRatingsUnlocked(cb) {
+    if (!APP.auth.hasTraineesPassword() || APP.auth.isTraineesUnlockedThisSession()) { cb(); return; }
+    var pw = prompt('הזן את סיסמת הדירוגים כדי להמשיך:');
+    if (pw === null) return;
+    if (APP.auth.checkTraineesPassword(pw)) {
+      APP.auth.markTraineesUnlocked();
+      cb();
+    } else {
+      alert('סיסמה שגויה');
     }
-    el.innerHTML = '<div class="card">' +
-      '<h2>לשונית חניכים נעולה</h2>' +
-      '<p class="muted">הזן/י את סיסמת לשונית החניכים כדי להציג את הרשימה.</p>' +
-      '<div class="row">' +
-      '<input type="password" id="trainees-lock-password" placeholder="סיסמה">' +
-      '<button class="btn-primary" data-action="trainees-unlock">פתח</button>' +
-      '</div>' +
-      '<p id="trainees-lock-error" class="error-text" hidden>סיסמה שגויה</p>' +
-      '</div>';
   }
 
   function rerenderPool(key) {
-    if (key === 'trainees') renderTraineesTabGated();
+    if (key === 'trainees') APP.pools.renderTrainees();
     if (key === 'leaders') APP.pools.renderLeaders();
     if (key === 'farmers') APP.pools.renderFarmers();
   }
@@ -122,11 +147,11 @@
         APP.state.save();
         APP.render.renderTaskTab();
       },
-      'print': function () { window.print(); },
+      'print': function () { preparePrint(); window.print(); },
       'task-details-start': function () {
         APP.modal.open(APP.render.taskDetailsModalHtml(APP.state.getCurrentTask()), { onDismiss: function () { APP.modal.close(); } });
       },
-      'preview-open': function () { enterPreview(); },
+      'preview-open': function () { enterPreview(); preparePrint(); },
       'add-post-start': function () { APP.task.startStepper(); openPostModal(); },
       'edit-post': function (el) {
         var task = APP.state.getCurrentTask();
@@ -244,7 +269,7 @@
         if (guestTask && chosenPostId) {
           try {
             APP.state.assignGuestToPost(guestTask, guestId, chosenPostId);
-            APP.assign.recomputePhoneCarriers(guestTask, APP.state.get().pools, guestTask.assignment.postAssignments);
+            APP.assign.recomputeResponsibleRoles(guestTask, APP.state.get().pools, guestTask.assignment.postAssignments);
             APP.state.save();
           } catch (err) {
             alert('אירעה שגיאה בשיבוץ האורח, נסה שוב.');
@@ -270,25 +295,43 @@
         }
         return;
       }
-      // Trainee modal actions
-      if (e.target.closest('[data-action="add-trainee-commit"]')) {
-        var name = document.getElementById('modal-trainee-name').value.trim();
-        if (!name) { alert('הזן שם'); return; }
-        var ratings = {
-          strength: parseInt(document.getElementById('modal-trainee-strength').value, 10),
-          dexterity: parseInt(document.getElementById('modal-trainee-dexterity').value, 10),
-          responsibility: parseInt(document.getElementById('modal-trainee-responsibility').value, 10),
-          leadership: parseInt(document.getElementById('modal-trainee-leadership').value, 10)
-        };
-        var cohort = document.getElementById('modal-trainee-cohort').value;
-        var gender = document.getElementById('modal-trainee-gender').value;
-        APP.state.addTrainee(name, ratings, cohort, gender);
-        APP.modal.close();
-        renderTraineesTabGated();
+      // Trainee trait-entry wizard actions
+      if (e.target.closest('[data-action="trainee-step-next-identity"]')) {
+        APP.pools.readTraineeStepIdentityFromDom();
+        var ts = APP.pools.getTraineeStepper();
+        if (!ts.name || !ts.name.trim()) { alert('הזן שם'); return; }
+        APP.pools.traineeStepperGoTo(1);
+        APP.modal.setContent(APP.pools.traineeStepperHtml());
         return;
       }
-      if (e.target.closest('[data-action="add-trainee-cancel"]')) {
+      if (e.target.closest('[data-action="trainee-step-back"]')) {
+        var tsBack = APP.pools.getTraineeStepper();
+        APP.pools.traineeStepperGoTo(Math.max(0, tsBack.step - 1));
+        APP.modal.setContent(APP.pools.traineeStepperHtml());
+        return;
+      }
+      if (e.target.closest('[data-action="trainee-step-cancel"]')) {
+        APP.pools.cancelTraineeStepper();
         APP.modal.close();
+        APP.pools.renderTrainees();
+        return;
+      }
+      if (e.target.closest('[data-action="trainee-step-set-rating"]')) {
+        var ratingBtn = e.target.closest('[data-action="trainee-step-set-rating"]');
+        var tsRate = APP.pools.getTraineeStepper();
+        APP.pools.traineeStepSetRating(ratingBtn.dataset.trait, parseInt(ratingBtn.dataset.value, 10));
+        var TRAIT_ORDER_LEN = 5; // strength, dexterity, fineMotor, responsibility, leadership
+        var isLastTrait = tsRate.step === TRAIT_ORDER_LEN;
+        if (tsRate.singleTrait || isLastTrait) {
+          if (APP.pools.commitTraineeStepper() !== false) {
+            APP.modal.close();
+            APP.pools.renderTrainees();
+            APP.render.renderTaskTab();
+          }
+        } else {
+          APP.pools.traineeStepperGoTo(tsRate.step + 1);
+          APP.modal.setContent(APP.pools.traineeStepperHtml());
+        }
         return;
       }
       // Job-template modal actions
@@ -302,6 +345,7 @@
           defaultRequirements: {
             strength: parseInt(document.getElementById('modal-jobtemplate-strength').value, 10),
             dexterity: parseInt(document.getElementById('modal-jobtemplate-dexterity').value, 10),
+            fineMotor: parseInt(document.getElementById('modal-jobtemplate-finemotor').value, 10),
             responsibilityMinCount: { level: 5, count: 0 },
             leadershipMinCount: { level: 5, count: 0 },
             genderMinCount: { male: 0, female: 0 }
@@ -406,26 +450,29 @@
       else if (f === 'active') { t.active = e.target.checked; tr.classList.toggle('inactive-row', !e.target.checked); }
       else if (f === 'cohort') t.cohort = e.target.value;
       else if (f === 'gender') t.gender = e.target.value;
-      else if (['strength', 'dexterity', 'responsibility', 'leadership'].indexOf(f) >= 0) {
-        t.ratings[f] = parseInt(e.target.value, 10);
-      }
       APP.state.save();
       APP.render.renderTaskTab();
     });
     el.addEventListener('click', function (e) {
-      if (e.target.closest('[data-action="trainees-unlock"]')) {
-        var pwInput = document.getElementById('trainees-lock-password');
-        var errorEl = document.getElementById('trainees-lock-error');
-        if (pwInput && APP.auth.checkTraineesPassword(pwInput.value)) {
-          APP.auth.markTraineesUnlocked();
-          renderTraineesTabGated();
-        } else if (errorEl) {
-          errorEl.hidden = false;
-        }
+      if (e.target.closest('[data-action="add-trainee-start"]')) {
+        ensureRatingsUnlocked(function () {
+          APP.pools.startTraineeStepper();
+          APP.modal.open(APP.pools.traineeStepperHtml(), { onDismiss: function () { APP.pools.cancelTraineeStepper(); APP.modal.close(); APP.pools.renderTrainees(); } });
+          APP.pools.renderTrainees();
+        });
         return;
       }
-      if (e.target.closest('[data-action="add-trainee-start"]')) {
-        APP.modal.open(APP.pools.addTraineeModalHtml(), { onDismiss: function () { APP.modal.close(); } });
+      var ratingBtn = e.target.closest('[data-action="edit-trainee-rating"]');
+      if (ratingBtn) {
+        var traineeId = ratingBtn.dataset.traineeId;
+        var trait = ratingBtn.dataset.trait;
+        ensureRatingsUnlocked(function () {
+          var trainee = APP.state.findById(APP.state.get().pools.trainees, traineeId);
+          if (!trainee) return;
+          APP.pools.startTraineeStepperAtTrait(trainee, trait);
+          APP.modal.open(APP.pools.traineeStepperHtml(), { onDismiss: function () { APP.pools.cancelTraineeStepper(); APP.modal.close(); APP.pools.renderTrainees(); } });
+          APP.pools.renderTrainees();
+        });
         return;
       }
       var delBtn = e.target.closest('[data-action="delete-trainee"]');
@@ -435,7 +482,7 @@
         var d = APP.state.get();
         d.pools.trainees = d.pools.trainees.filter(function (x) { return x.id !== tr.dataset.id; });
         APP.state.save();
-        renderTraineesTabGated();
+        APP.pools.renderTrainees();
       }
     });
   }
@@ -451,7 +498,7 @@
       var f = e.target.dataset.field;
       if (f === 'name') tpl.name = e.target.value;
       else if (f === 'active') { tpl.active = e.target.checked; tr.classList.toggle('inactive-row', !e.target.checked); }
-      else if (f === 'strength' || f === 'dexterity') r[f] = parseInt(e.target.value, 10);
+      else if (f === 'strength' || f === 'dexterity' || f === 'fineMotor') r[f] = parseInt(e.target.value, 10);
       else if (f === 'resp-level') r.responsibilityMinCount.level = parseInt(e.target.value, 10);
       else if (f === 'resp-count') r.responsibilityMinCount.count = parseInt(e.target.value, 10) || 0;
       else if (f === 'lead-level') r.leadershipMinCount.level = parseInt(e.target.value, 10);
@@ -525,7 +572,7 @@
       '</div>' +
       '<div class="row" style="margin-top:20px;">' +
       '<button class="btn-secondary" data-action="change-password">שינוי סיסמה</button>' +
-      '<button class="btn-secondary" data-action="change-trainees-password">סיסמת לשונית חניכים</button>' +
+      '<button class="btn-secondary" data-action="change-trainees-password">סיסמת דירוגי חניכים</button>' +
       '<button class="btn-secondary" data-action="lock-now">נעילה</button>' +
       '</div>' +
       '<p class="disclaimer">⚠️ הגנת הסיסמה כאן בסיסית בלבד (אתר סטטי, ללא שרת) ואינה מהווה אבטחת מידע אמיתית - אין להזין באתר זה מידע רגיש.</p>' +
@@ -538,8 +585,10 @@
       '<div class="row" style="margin-top:8px;">' +
       '<button class="btn-secondary" data-action="test-backup-connection">בדוק חיבור</button>' +
       '<button class="btn-secondary" data-action="backup-now">גבה עכשיו</button>' +
+      '<button class="btn-secondary" data-action="pull-backup">משוך עדכונים ממכשיר אחר</button>' +
       '<span id="backup-status" class="muted"></span>' +
       '</div>' +
+      '<p class="muted">"משוך עדכונים" מחליף את החניכים/אנשי הצוות/חקלאים במכשיר הזה בגרסה שנשמרה לגיליון - להשתמש רק אחרי שהמכשיר האחר גיבה קודם.</p>' +
       '</div>';
   }
 
@@ -555,16 +604,18 @@
         else if (p1) { alert('סיסמה קצרה מדי'); }
       }
       if (e.target.closest('[data-action="change-trainees-password"]')) {
-        var tp1 = prompt('הזן סיסמה חדשה ללשונית חניכים (השאר ריק לביטול הנעילה):');
+        var tp1 = prompt('הזן סיסמה חדשה להצגת דירוגי החניכים (השאר ריק לביטול ההגנה):');
         if (tp1 === null) { /* cancelled */ }
         else if (tp1 === '') {
           APP.state.get().auth = APP.state.get().auth || {};
           delete APP.state.get().auth.traineesPasswordHash;
           APP.state.save();
-          alert('הנעילה בוטלה - הלשונית תהיה פתוחה לכולם');
+          APP.pools.renderTrainees();
+          alert('ההגנה בוטלה - דירוגי החניכים יהיו גלויים לכולם');
         } else if (tp1.length >= 3) {
           APP.auth.setTraineesPassword(tp1);
-          alert('סיסמת לשונית החניכים עודכנה');
+          APP.pools.renderTrainees();
+          alert('סיסמת דירוגי החניכים עודכנה');
         } else {
           alert('סיסמה קצרה מדי');
         }
@@ -596,6 +647,23 @@
         APP.backup.sendNow();
         if (nowStatusEl) { nowStatusEl.textContent = 'גיבוי נשלח'; nowStatusEl.className = 'muted'; }
       }
+      if (e.target.closest('[data-action="pull-backup"]')) {
+        var pullStatusEl = document.getElementById('backup-status');
+        if (!APP.backup.getUrl()) { alert('יש להגדיר ולשמור כתובת Web App קודם'); return; }
+        if (!confirm('פעולה זו תחליף את רשימות החניכים, אנשי הצוות והחקלאים במכשיר הזה בגרסה השמורה בגיליון. להמשיך?')) return;
+        if (pullStatusEl) { pullStatusEl.textContent = 'מושך נתונים...'; pullStatusEl.className = 'muted'; }
+        APP.backup.pullFromBackup(function (err) {
+          if (err) {
+            if (pullStatusEl) { pullStatusEl.textContent = '✗ המשיכה נכשלה - בדוק את הכתובת והחיבור'; pullStatusEl.className = 'error-text'; }
+            return;
+          }
+          if (pullStatusEl) { pullStatusEl.textContent = '✓ הנתונים עודכנו'; pullStatusEl.className = 'text-success'; }
+          APP.pools.renderTrainees();
+          APP.pools.renderLeaders();
+          APP.pools.renderFarmers();
+          APP.render.renderTaskTab();
+        });
+      }
     });
     el.addEventListener('change', function (e) {
       if (e.target.id === 'import-file' && e.target.files[0]) {
@@ -620,7 +688,7 @@
         if (btn.dataset.tab === 'task') APP.render.renderTaskTab();
         if (btn.dataset.tab === 'post-requirements') APP.render.renderPostRequirementsTab();
         if (btn.dataset.tab === 'history') APP.history.render();
-        if (btn.dataset.tab === 'trainees') renderTraineesTabGated();
+        if (btn.dataset.tab === 'trainees') APP.pools.renderTrainees();
         if (btn.dataset.tab === 'leaders') APP.pools.renderLeaders();
         if (btn.dataset.tab === 'farmers') APP.pools.renderFarmers();
         if (btn.dataset.tab === 'jobtemplates') APP.pools.renderJobTemplates();
@@ -664,7 +732,7 @@
       APP.pools.renderLeaders();
       APP.pools.renderFarmers();
       APP.pools.renderJobTemplates();
-      renderTraineesTabGated();
+      APP.pools.renderTrainees();
       renderSettings();
       wireTaskTab();
       wirePostRequirementsTab();

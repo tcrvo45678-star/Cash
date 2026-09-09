@@ -18,7 +18,7 @@ APP.render = (function () {
         APP.state.swapCells(t, a, b);
         if (t.assignment) {
           t.assignment.spare = t.assignment.spare.filter(function (v) { return v.t !== 'empty'; });
-          APP.assign.recomputePhoneCarriers(t, APP.state.get().pools, t.assignment.postAssignments);
+          APP.assign.recomputeResponsibleRoles(t, APP.state.get().pools, t.assignment.postAssignments);
           APP.state.save();
         }
         renderTaskTab();
@@ -312,6 +312,7 @@ APP.render = (function () {
         "<div class=\"req-grid\">" +
         "<label>חוזק פיזי נדרש<select id=\"req-strength\">" + U.ratingOptions(r.strength) + "</select></label>" +
         "<label>זריזות ידיים נדרשת<select id=\"req-dexterity\">" + U.ratingOptions(r.dexterity) + "</select></label>" +
+        "<label>מוטוריקה עדינה נדרשת<select id=\"req-finemotor\">" + U.ratingOptions(r.fineMotor) + "</select></label>" +
         "<label>אחראיות - רמה<select id=\"req-resp-level\">" + U.ratingOptions(r.responsibilityMinCount.level) + "</select></label>" +
         "<label>אחראיות - כמות מינ<input type=\"number\" min=\"0\" id=\"req-resp-count\" value=\"" + r.responsibilityMinCount.count + "\"></label>" +
         "<label>הנהגה - רמה<select id=\"req-lead-level\">" + U.ratingOptions(r.leadershipMinCount.level) + "</select></label>" +
@@ -424,6 +425,16 @@ APP.render = (function () {
       var carrier = APP.state.findById(APP.state.get().pools.trainees, pa.phoneCarrierId);
       phoneCarrierName = carrier ? carrier.name : '-';
     }
+    var studyResponsibleName = '-';
+    if (pa && pa.studyResponsibleId) {
+      var studyResp = APP.state.findById(APP.state.get().pools.trainees, pa.studyResponsibleId);
+      studyResponsibleName = studyResp ? studyResp.name : '-';
+    }
+    var waterResponsibleName = '-';
+    if (pa && pa.waterResponsibleId) {
+      var waterResp = APP.state.findById(APP.state.get().pools.trainees, pa.waterResponsibleId);
+      waterResponsibleName = waterResp ? waterResp.name : '-';
+    }
     return '<div class="post-req-card">' +
       '<h3>' + U.escapeHtml(leaderName || '(ריק)') + '</h3>' +
       '<dl class="post-req-dl">' +
@@ -433,10 +444,13 @@ APP.render = (function () {
       '<div><dt>מספר עובדים</dt><dd>' + (post.workerCount != null ? post.workerCount : 'גמיש') + '</dd></div>' +
       '<div><dt>חוזק</dt><dd>' + r.strength + '</dd></div>' +
       '<div><dt>זריזות</dt><dd>' + r.dexterity + '</dd></div>' +
+      '<div><dt>מוטוריקה עדינה</dt><dd>' + r.fineMotor + '</dd></div>' +
       '<div><dt>אחראיות</dt><dd>≥' + r.responsibilityMinCount.level + ' x' + r.responsibilityMinCount.count + '</dd></div>' +
       '<div><dt>הנהגה</dt><dd>≥' + r.leadershipMinCount.level + ' x' + r.leadershipMinCount.count + '</dd></div>' +
       '<div><dt>דרך הגעה</dt><dd>' + (post.transportMethod === 'transporter' ? 'טרנספורטר' : 'הסעה') + '</dd></div>' +
       '<div><dt>אחראי טלפון</dt><dd>' + U.escapeHtml(phoneCarrierName) + '</dd></div>' +
+      '<div><dt>אחראי לימוד</dt><dd>' + U.escapeHtml(studyResponsibleName) + '</dd></div>' +
+      '<div><dt>אחראי מים</dt><dd>' + U.escapeHtml(waterResponsibleName) + '</dd></div>' +
       '</dl>' +
       postActualSummaryHtml(task, post) +
       '</div>';
@@ -452,18 +466,21 @@ APP.render = (function () {
       return '<h4>בפועל</h4><p class="muted">טרם שובץ</p>';
     }
     var r = post.requirements;
-    var sumStrength = 0, sumDexterity = 0, respCount = 0, leadCount = 0;
+    var sumStrength = 0, sumDexterity = 0, sumFineMotor = 0, respCount = 0, leadCount = 0;
     trainees.forEach(function (t) {
       sumStrength += t.ratings.strength;
       sumDexterity += t.ratings.dexterity;
+      sumFineMotor += t.ratings.fineMotor;
       if (t.ratings.responsibility >= r.responsibilityMinCount.level) respCount++;
       if (t.ratings.leadership >= r.leadershipMinCount.level) leadCount++;
     });
     var avgStrength = (sumStrength / trainees.length).toFixed(1);
     var avgDexterity = (sumDexterity / trainees.length).toFixed(1);
+    var avgFineMotor = (sumFineMotor / trainees.length).toFixed(1);
     return '<h4>בפועל</h4><dl class="post-req-dl">' +
       '<div><dt>חוזק ממוצע</dt><dd>' + avgStrength + '</dd></div>' +
       '<div><dt>זריזות ממוצעת</dt><dd>' + avgDexterity + '</dd></div>' +
+      '<div><dt>מוטוריקה עדינה ממוצעת</dt><dd>' + avgFineMotor + '</dd></div>' +
       '<div><dt>אחראיות</dt><dd>' + respCount + ' מתוך ' + trainees.length + '</dd></div>' +
       '<div><dt>הנהגה</dt><dd>' + leadCount + ' מתוך ' + trainees.length + '</dd></div>' +
       '</dl>';

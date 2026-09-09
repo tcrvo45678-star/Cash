@@ -113,6 +113,25 @@ button {
 .req-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
 .req-grid label { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-1); color: var(--muted); }
 
+/* 1-7 rating picker: one tap sets the value (and, in the trainee wizard,
+   advances to the next step) - big touch-friendly squares work the same
+   with a mouse or a finger, unlike a native <select>. */
+.rating-button-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.rating-btn {
+  min-width: 40px; min-height: 40px; border: 1px solid var(--divider); border-radius: 8px;
+  background: white; color: var(--ink); font-size: var(--fs-3); font-weight: 600; cursor: pointer;
+}
+.rating-btn:hover { background: var(--icon-bg); }
+.rating-btn.active { background: var(--bottle); color: white; border-color: var(--bottle); }
+
+/* A trainee rating cell in the pool table - same tap-to-open-stepper
+   interaction whether the value is shown or masked (🔒). */
+.rating-cell-btn {
+  min-width: 36px; min-height: 32px; border: 1px solid var(--divider); border-radius: 6px;
+  background: white; color: var(--ink); font-size: var(--fs-2); cursor: pointer;
+}
+.rating-cell-btn:hover { background: var(--icon-bg); }
+
 .post-req-list { display: flex; flex-direction: column; gap: 14px; }
 .post-req-card { border: 1px solid var(--divider); border-radius: 10px; padding: 14px 16px; }
 .post-req-card h3 { color: var(--bottle); margin-bottom: 8px; }

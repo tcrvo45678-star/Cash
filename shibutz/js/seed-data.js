@@ -48,7 +48,7 @@ APP.seedData = (function () {
     { name: 'נועלה', cohort: 'c', gender: 'f' }
   ];
 
-  var DEFAULT_RATINGS = { strength: 4, dexterity: 4, responsibility: 4, leadership: 4 };
+  var DEFAULT_RATINGS = { strength: 4, dexterity: 4, fineMotor: 4, responsibility: 4, leadership: 4 };
 
   function hasFlag() {
     try { return localStorage.getItem(SEED_FLAG_KEY) === '1'; } catch (e) { return true; }
@@ -122,6 +122,7 @@ APP.seedData = (function () {
         APP.state.addTrainee(t.name, {
           strength: DEFAULT_RATINGS.strength,
           dexterity: DEFAULT_RATINGS.dexterity,
+          fineMotor: DEFAULT_RATINGS.fineMotor,
           responsibility: DEFAULT_RATINGS.responsibility,
           leadership: DEFAULT_RATINGS.leadership
         }, t.cohort, t.gender);

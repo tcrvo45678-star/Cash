@@ -90,7 +90,7 @@ APP.task = (function () {
         transportMethod: 'shuttle',
         templateId: '',
         requirements: {
-          strength: 4, dexterity: 4,
+          strength: 4, dexterity: 4, fineMotor: 4,
           responsibilityMinCount: { level: 5, count: 1 },
           leadershipMinCount: { level: 5, count: 1 },
           genderMinCount: { male: 0, female: 0 }
@@ -141,6 +141,7 @@ APP.task = (function () {
     if (!stepper) return;
     stepper.requirements.strength = parseInt(document.getElementById('req-strength').value, 10);
     stepper.requirements.dexterity = parseInt(document.getElementById('req-dexterity').value, 10);
+    stepper.requirements.fineMotor = parseInt(document.getElementById('req-finemotor').value, 10);
     stepper.requirements.responsibilityMinCount.level = parseInt(document.getElementById('req-resp-level').value, 10);
     stepper.requirements.responsibilityMinCount.count = parseInt(document.getElementById('req-resp-count').value, 10) || 0;
     stepper.requirements.leadershipMinCount.level = parseInt(document.getElementById('req-lead-level').value, 10);

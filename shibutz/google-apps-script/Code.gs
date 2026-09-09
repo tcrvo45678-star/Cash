@@ -34,5 +34,18 @@ function doGet(e) {
     return ContentService.createTextOutput(JSON.stringify({ status: 'ok' }))
       .setMimeType(ContentService.MimeType.JSON);
   }
+  // Pull direction: read back the trainees/leaders/farmers pool tabs (not
+  // taskLog - that's a report, not app data) so a second device can sync
+  // the pools someone entered from a different device/browser.
+  if (e.parameter && e.parameter.pull) {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var out = {};
+    ['trainees', 'leaders', 'farmers'].forEach(function (key) {
+      var sheet = ss.getSheetByName(SHEET_NAMES[key]);
+      out[key] = sheet ? sheet.getDataRange().getValues() : [];
+    });
+    return ContentService.createTextOutput(JSON.stringify(out))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
   return ContentService.createTextOutput('shibutz backup endpoint is running');
 }

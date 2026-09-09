@@ -172,7 +172,7 @@ APP.state = (function () {
   function addGuestToTask(task, name, gender) {
     var g = {
       id: APP.storage.uid('g'), name: name, gender: gender || 'm',
-      ratings: { strength: 4, dexterity: 4, responsibility: 4, leadership: 4 }
+      ratings: { strength: 4, dexterity: 4, fineMotor: 4, responsibility: 4, leadership: 4 }
     };
     task.extraGuests.push(g);
     save();
