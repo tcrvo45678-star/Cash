@@ -1,7 +1,7 @@
 import { store } from "./../store.js";
 import { icon } from "./../icons.js";
 import { fmtMoney, fmtPct, escapeHtml } from "./../utils.js";
-import { currentPortfolioStats, portfolioHistory, buildInsights, allocationBy, staleInvestments } from "./../calc.js";
+import { currentPortfolioStats, portfolioHistory, buildInsights, allocationBy, staleInvestments, liquiditySplit, taxSplit } from "./../calc.js";
 import { createValueVsContributionsChart, createDonutChart } from "./../charts.js";
 import { fmtDate } from "./../utils.js";
 import * as workflows from "./../workflows.js";
@@ -51,6 +51,14 @@ export function renderDashboard(container) {
         <h3>${icon("info", { size: 16 })} תובנות</h3>
         <ul class="insights-list">${insights.map((t) => `<li>${escapeHtml(t)}</li>`).join("")}</ul>
       </div>` : ""}
+
+      <div class="card">
+        <div class="card-head"><h3>פילוח התיק</h3></div>
+        <div class="split-bars">
+          ${splitBarHtml(liquiditySplit(), [["liquid", "נזיל", "var(--positive)"], ["illiquid", "לא נזיל", "var(--accent-gold)"]])}
+          ${splitBarHtml(taxSplit(), [["taxable", "חייב במס", "var(--accent-gold)"], ["exempt", "פטור ממס", "var(--brand-secondary)"]])}
+        </div>
+      </div>
 
       <div class="grid-2">
         <div class="card">
@@ -149,6 +157,23 @@ function computeHeroDelta(container) {
   const change = last.value - first.value;
   const pct = first.value ? (change / first.value) * 100 : 0;
   deltaEl.innerHTML = `<span class="${change >= 0 ? "text-positive" : "text-negative"}">${fmtMoney(change, "ILS", { forceSign: true })} החודש · ${fmtPct(pct)}</span>`;
+}
+
+function splitBarHtml(split, [[keyA, labelA, colorA], [keyB, labelB, colorB]]) {
+  const total = split.total || 0;
+  const a = split[keyA] || 0, b = split[keyB] || 0;
+  const pctA = total ? Math.round((a / total) * 100) : 0;
+  const pctB = 100 - pctA;
+  return `<div class="split-bar-box">
+    <div class="split-bar-track">
+      <div class="split-bar-seg" style="width:${pctA}%; background:${colorA}">${pctA > 12 ? pctA + "%" : ""}</div>
+      <div class="split-bar-seg" style="width:${pctB}%; background:${colorB}">${pctB > 12 ? pctB + "%" : ""}</div>
+    </div>
+    <div class="split-bar-legend">
+      <span><span class="legend-dot" style="background:${colorA}"></span>${labelA} · ${fmtMoney(a)}</span>
+      <span><span class="legend-dot" style="background:${colorB}"></span>${labelB} · ${fmtMoney(b)}</span>
+    </div>
+  </div>`;
 }
 
 function emptyStateHtml() {

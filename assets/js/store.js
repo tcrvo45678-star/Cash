@@ -13,6 +13,16 @@ export const INVESTMENT_TYPES = [
   { id: "other", label: "אחר", icon: "package" },
 ];
 
+export const DEFAULT_LIQUIDITY_BY_TYPE = {
+  stock_etf: "liquid",
+  pension_fund: "illiquid",
+  study_fund: "illiquid",
+  cash_deposit: "liquid",
+  crypto: "liquid",
+  real_estate: "illiquid",
+  other: "liquid",
+};
+
 export const CHART_PALETTE = [
   "#245E48", "#B69560", "#5C7A94", "#8C4A38", "#4F8C82",
   "#9B6B5C", "#7A8FA6", "#A0895A", "#6B8F71", "#B0567A",
@@ -117,7 +127,7 @@ class Store {
       track: fields.track || "",
       ticker: fields.ticker || "",
       taxType: fields.taxType || "taxable",
-      liquidity: fields.liquidity || "liquid",
+      liquidity: fields.liquidity || DEFAULT_LIQUIDITY_BY_TYPE[fields.type] || "liquid",
       category: fields.category || "",
       exposure: fields.exposure || "",
       icon: fields.icon || null,

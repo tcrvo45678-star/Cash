@@ -214,6 +214,28 @@ export function allocationBy(field) {
   return Array.from(map.values()).sort((a, b) => b.value - a.value);
 }
 
+export function liquiditySplit() {
+  const invs = includedInvestments();
+  const today = todayISO();
+  let liquid = 0, illiquid = 0;
+  invs.forEach((inv) => {
+    const value = valueOfInvestmentAt(inv.id, today);
+    if (inv.liquidity === "liquid") liquid += value; else illiquid += value;
+  });
+  return { liquid, illiquid, total: liquid + illiquid };
+}
+
+export function taxSplit() {
+  const invs = includedInvestments();
+  const today = todayISO();
+  let taxable = 0, exempt = 0;
+  invs.forEach((inv) => {
+    const value = valueOfInvestmentAt(inv.id, today);
+    if (inv.taxType === "taxable") taxable += value; else exempt += value;
+  });
+  return { taxable, exempt, total: taxable + exempt };
+}
+
 export function typeLabel(type) {
   const t = INVESTMENT_TYPES.find((x) => x.id === type);
   return t ? t.label : "אחר";
