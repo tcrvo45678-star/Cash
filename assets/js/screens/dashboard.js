@@ -19,8 +19,9 @@ export function renderDashboard(container) {
   container.innerHTML = `
     <div class="screen dashboard-screen">
       <div class="hero-card">
-        <div class="hero-label">ההון שלי</div>
-        <div class="hero-value" id="hero-value">${fmtMoney(stats.value)}</div>
+        <div class="hero-label">ההון שלי <span class="info-tip" title="נטו לאחר ניכוי מס רווחי הון משוער (25%) על הרווח באפיקים חייבים במס">${icon("info", { size: 13 })}</span></div>
+        <div class="hero-value" id="hero-value">${fmtMoney(stats.netValue)}</div>
+        <div class="hero-gross">ברוטו ${fmtMoney(stats.value)}${stats.tax > 0.5 ? ` · מס רווח הון משוער ${fmtMoney(stats.tax)}` : ""}</div>
         <div class="hero-delta" id="hero-delta"></div>
         <div class="hero-substats">
           <div class="substat"><span class="substat-label">הפקדתי</span><span class="substat-value">${fmtMoney(stats.contrib)}</span></div>

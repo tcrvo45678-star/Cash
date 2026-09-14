@@ -43,6 +43,7 @@ function defaultSettings() {
   return {
     theme: "system",
     sheetsUrl: "",
+    fxRateUsdIls: 3.7,
     ui: {
       investmentsView: "cards",
       dashboardRange: "1Y",
@@ -130,6 +131,9 @@ class Store {
       liquidity: fields.liquidity || DEFAULT_LIQUIDITY_BY_TYPE[fields.type] || "liquid",
       category: fields.category || "",
       exposure: fields.exposure || "",
+      market: fields.market || "",
+      sector: fields.sector || "",
+      purchaseRate: fields.purchaseRate ?? null,
       icon: fields.icon || null,
       color: fields.color || CHART_PALETTE[this.data.investments.length % CHART_PALETTE.length],
       notes: fields.notes || "",
@@ -311,6 +315,11 @@ class Store {
 
   setSheetsUrl(url) {
     this.settings.sheetsUrl = url;
+    this.persistSettings();
+  }
+
+  setFxRateUsdIls(rate) {
+    this.settings.fxRateUsdIls = Number(rate) || 3.7;
     this.persistSettings();
   }
 

@@ -328,6 +328,9 @@ function renderDetailsTab(body, inv) {
     ["נזילות", inv.liquidity === "liquid" ? "נזיל" : "לא נזיל"],
     ["קטגוריה", inv.category || "—"],
     ["חשיפה", inv.exposure || "—"],
+    ["שוק", inv.market || "—"],
+    ["תחום", inv.sector || "—"],
+    ["שער דולר ברכישה", inv.purchaseRate != null ? inv.purchaseRate : "—"],
     ["נכלל בסך ההון", inv.excludeFromTotals ? "לא" : "כן"],
     ["נוצר בתאריך", fmtDate(inv.createdAt.slice(0, 10))],
   ];

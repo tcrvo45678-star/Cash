@@ -357,6 +357,15 @@ export function openEditInvestmentDrawer(investmentId) {
       </div>
     </section>
     <section class="form-section">
+      <h4>שוק, תחום ושער חליפין</h4>
+      <p class="field-hint">אופציונלי — משמש לפילוחים ולגרף רווח/הפסד משער חליפין במסך הניתוח (שימושי בעיקר לאחזקות בודדות כמו מניות/ETF).</p>
+      <div class="field-row">
+        <div class="field"><label>שוק</label><input type="text" name="market" value="${escAttr(inv.market)}" placeholder="ארה״ב, ישראל..."></div>
+        <div class="field"><label>תחום</label><input type="text" name="sector" value="${escAttr(inv.sector)}" placeholder="טכנולוגיה, מדד רחב..."></div>
+      </div>
+      <div class="field"><label>שער דולר-שקל ברכישה</label><input type="number" step="0.001" inputmode="decimal" name="purchaseRate" value="${inv.purchaseRate ?? ""}" placeholder="רלוונטי רק למטבע דולר"></div>
+    </section>
+    <section class="form-section">
       <h4>עיצוב ותצוגה</h4>
       <div class="field"><label>צבע בגרפים</label>
         <div class="color-swatches" data-select="color">
@@ -403,6 +412,9 @@ export function openEditInvestmentDrawer(investmentId) {
       feeRate: fd.get("feeRate") ? parseNumberInput(fd.get("feeRate")) : null,
       category: fd.get("category") || "",
       exposure: fd.get("exposure") || "",
+      market: fd.get("market") || "",
+      sector: fd.get("sector") || "",
+      purchaseRate: fd.get("purchaseRate") ? parseNumberInput(fd.get("purchaseRate")) : null,
       color: selectedColor,
       excludeFromTotals: fd.get("excludeFromTotals") === "on",
       notes: fd.get("notes") || "",

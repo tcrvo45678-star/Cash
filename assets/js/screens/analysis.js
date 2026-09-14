@@ -1,8 +1,8 @@
 import { store } from "./../store.js";
 import { icon } from "./../icons.js";
 import { fmtMoney, escapeHtml } from "./../utils.js";
-import { allocationBy, monthlyReturnHeatmap, investmentHistory } from "./../calc.js";
-import { createDonutChart, createComparisonChart, renderHeatmap } from "./../charts.js";
+import { allocationBy, monthlyReturnHeatmap, investmentHistory, hasMarketSectorData, breakdownByField, fxGainLossByInvestment } from "./../calc.js";
+import { createDonutChart, createComparisonChart, createBarChart, renderHeatmap } from "./../charts.js";
 import { CHART_PALETTE } from "./../store.js";
 
 let compareIds = [];
@@ -12,6 +12,8 @@ let allocField = "investment";
 export function renderAnalysis(container) {
   const invs = store.activeInvestments().filter((i) => !i.excludeFromTotals);
   if (compareIds.length === 0 && invs.length) compareIds = invs.slice(0, Math.min(3, invs.length)).map((i) => i.id);
+  const showMarketSector = hasMarketSectorData();
+  const fxItems = fxGainLossByInvestment();
 
   container.innerHTML = `
     <div class="screen analysis-screen">
@@ -32,6 +34,20 @@ export function renderAnalysis(container) {
           <div class="legend-list" id="alloc-legend"></div>
         </div>
       </div>
+
+      ${showMarketSector ? `
+      <div class="card">
+        <div class="card-head"><h3>פירוט אחזקות - שוק, תחום ומטבע</h3></div>
+        <p class="text-muted small" style="margin-bottom:12px;">מבוסס על השקעות עם שוק/תחום מוגדרים (למשל פירוט אחזקות בתוך תיק השקעות). ערכים דולריים מומרים לשקלים לפי השער בהגדרות.</p>
+        <div class="market-sector-grid">
+          <div class="ms-block"><div class="ms-title">לפי שוק</div><div class="chart-wrap chart-wrap-sm"><canvas id="market-donut"></canvas></div><div class="legend-list" id="market-legend"></div></div>
+          <div class="ms-block"><div class="ms-title">לפי תחום</div><div class="chart-wrap chart-wrap-sm"><canvas id="sector-donut"></canvas></div><div class="legend-list" id="sector-legend"></div></div>
+          <div class="ms-block"><div class="ms-title">חשיפה מטבעית</div><div class="chart-wrap chart-wrap-sm"><canvas id="currency-donut"></canvas></div><div class="legend-list" id="currency-legend"></div></div>
+        </div>
+        ${fxItems.length ? `
+        <div class="card-head" style="margin-top:20px;"><h3>רווח / הפסד משער חליפין</h3></div>
+        <div class="chart-wrap"><canvas id="fx-chart"></canvas></div>` : ""}
+      </div>` : ""}
 
       <div class="card">
         <div class="card-head">
@@ -54,6 +70,17 @@ export function renderAnalysis(container) {
   container.querySelectorAll("[data-alloc-field]").forEach((b) => b.addEventListener("click", () => { allocField = b.dataset.allocField; renderAnalysis(container); }));
 
   drawAllocation(container);
+
+  if (showMarketSector) {
+    drawMiniDonut(container, "market-donut", "market-legend", breakdownByField("market"));
+    drawMiniDonut(container, "sector-donut", "sector-legend", breakdownByField("sector"));
+    drawMiniDonut(container, "currency-donut", "currency-legend", breakdownByField("currency"));
+    if (fxItems.length) {
+      createBarChart(container.querySelector("#fx-chart"), {
+        labels: fxItems.map((x) => x.name), values: fxItems.map((x) => x.value),
+      });
+    }
+  }
 
   container.querySelector("#normalize-toggle").addEventListener("change", (e) => { normalized = e.target.checked; drawCompare(container); });
   container.querySelectorAll('#compare-picker input[type="checkbox"]').forEach((cb) => {
@@ -93,6 +120,28 @@ function drawAllocation(container) {
       <span class="legend-name">${escapeHtml(a.name)}</span>
       <span class="legend-value">${fmtMoney(a.value)} · ${total ? Math.round((a.value / total) * 100) : 0}%</span>
     </div>`).join("");
+}
+
+function drawMiniDonut(container, canvasId, legendId, rawItems) {
+  const items = rawItems.map((a, i) => ({ ...a, color: a.color || CHART_PALETTE[i % CHART_PALETTE.length] }));
+  const canvas = container.querySelector(`#${canvasId}`);
+  const legend = container.querySelector(`#${legendId}`);
+  if (!canvas) return;
+  if (!items.length) {
+    canvas.parentElement.innerHTML = `<p class="text-muted empty-note">אין נתונים.</p>`;
+    if (legend) legend.innerHTML = "";
+    return;
+  }
+  createDonutChart(canvas, { items });
+  const total = items.reduce((s, a) => s + a.value, 0);
+  if (legend) {
+    legend.innerHTML = items.map((a) => `
+      <div class="legend-item">
+        <span class="legend-dot" style="background:${a.color}"></span>
+        <span class="legend-name">${escapeHtml(a.name)}</span>
+        <span class="legend-value">${total ? Math.round((a.value / total) * 100) : 0}%</span>
+      </div>`).join("");
+  }
 }
 
 function drawCompare(container) {

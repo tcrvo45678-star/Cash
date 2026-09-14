@@ -132,8 +132,7 @@ export function convertLegacyToNewData(legacy) {
     const newId = uid();
     idMap[h.id] = newId;
     const entries = (legacy.entries && legacy.entries[h.id]) || [];
-    const isUSD = h.currency === "USD";
-    const rate = 3.7;
+    const currency = h.currency || "ILS";
 
     const inv = {
       id: newId,
@@ -141,14 +140,17 @@ export function convertLegacyToNewData(legacy) {
       type: "stock_etf",
       institution: "אקסלנס",
       accountLabel: "אקסלנס",
-      currency: h.currency || "ILS",
+      currency,
       feeRate: h.feePct ?? null,
       track: "",
       ticker: "",
       taxType: "taxable",
       liquidity: "liquid",
-      category: [h.market, h.sector].filter(Boolean).join(" · "),
-      exposure: h.sector || "",
+      category: "",
+      exposure: "",
+      market: h.market || "",
+      sector: h.sector || "",
+      purchaseRate: h.purchaseRate ?? null,
       icon: null,
       color: null,
       notes: "יובא כפירוט אחזקה מתוך אקסלנס (מעקב בלבד, לא נכלל אוטומטית בסך ההון עד לאישור)",
@@ -162,23 +164,22 @@ export function convertLegacyToNewData(legacy) {
     investments.push(inv);
 
     const sorted = [...entries].sort((a, b) => a.month.localeCompare(b.month));
-    let prevDeposited = 0;
+    let prevDepositedRaw = 0;
     sorted.forEach((e, idx) => {
-      const rawBalance = Number(e.rawBalance) || 0;
-      const balanceILS = isUSD ? rawBalance * rate : rawBalance;
+      const rawBalance = Math.round((Number(e.rawBalance) || 0) * 100) / 100;
       const pctChange = e.pctChange;
-      const deposited = (pctChange != null && pctChange !== -100) ? balanceILS / (1 + pctChange / 100) : balanceILS;
+      const depositedRaw = (pctChange != null && pctChange !== -100) ? rawBalance / (1 + pctChange / 100) : rawBalance;
       const date = `${e.month}-01`;
-      snapshots.push({ id: uid(), investmentId: newId, date, value: Math.round(balanceILS), createdAt: nowISO() });
-      const delta = deposited - prevDeposited;
-      if (idx === 0 && deposited > 0) {
-        transactions.push({ id: uid(), investmentId: newId, type: "deposit", date, amount: Math.round(deposited), currency: "ILS", note: "יובא מהמערכת הקודמת (משוער מאחוז שינוי)", linkedTransactionId: null, createdAt: nowISO() });
-      } else if (delta > 0.5) {
-        transactions.push({ id: uid(), investmentId: newId, type: "deposit", date, amount: Math.round(delta), currency: "ILS", note: "יובא מהמערכת הקודמת (משוער)", linkedTransactionId: null, createdAt: nowISO() });
-      } else if (delta < -0.5) {
-        transactions.push({ id: uid(), investmentId: newId, type: "withdrawal", date, amount: Math.round(Math.abs(delta)), currency: "ILS", note: "יובא מהמערכת הקודמת (משוער)", linkedTransactionId: null, createdAt: nowISO() });
+      snapshots.push({ id: uid(), investmentId: newId, date, value: rawBalance, createdAt: nowISO() });
+      const delta = depositedRaw - prevDepositedRaw;
+      if (idx === 0 && depositedRaw > 0) {
+        transactions.push({ id: uid(), investmentId: newId, type: "deposit", date, amount: Math.round(depositedRaw * 100) / 100, currency, note: "יובא מהמערכת הקודמת (משוער מאחוז שינוי)", linkedTransactionId: null, createdAt: nowISO() });
+      } else if (delta > 0.01) {
+        transactions.push({ id: uid(), investmentId: newId, type: "deposit", date, amount: Math.round(delta * 100) / 100, currency, note: "יובא מהמערכת הקודמת (משוער)", linkedTransactionId: null, createdAt: nowISO() });
+      } else if (delta < -0.01) {
+        transactions.push({ id: uid(), investmentId: newId, type: "withdrawal", date, amount: Math.round(Math.abs(delta) * 100) / 100, currency, note: "יובא מהמערכת הקודמת (משוער)", linkedTransactionId: null, createdAt: nowISO() });
       }
-      prevDeposited = deposited;
+      prevDepositedRaw = depositedRaw;
     });
   });
 

@@ -5,6 +5,8 @@ import { initTheme } from "./theme.js";
 import { maybeShowMigrationPrompt } from "./migrationPrompt.js";
 import { openNewMenu } from "./workflows.js";
 import { openCommandPalette } from "./commandPalette.js";
+import { syncToSheets } from "./sheets.js";
+import { debounce } from "./utils.js";
 import { renderDashboard } from "./screens/dashboard.js";
 import { renderInvestments } from "./screens/investments.js";
 import { renderInvestmentDetail } from "./screens/investmentDetail.js";
@@ -102,6 +104,13 @@ function subscribeReRender() {
   });
 }
 
+function setupAutoSync() {
+  const debouncedSync = debounce(() => {
+    if (store.settings.sheetsUrl) syncToSheets();
+  }, 1000);
+  store.subscribe(debouncedSync);
+}
+
 function boot() {
   store.load();
   initTheme();
@@ -109,6 +118,7 @@ function boot() {
   setupRoutes();
   setupGlobalKeyboard();
   subscribeReRender();
+  setupAutoSync();
 
   const shown = maybeShowMigrationPrompt(() => {
     startRouter();

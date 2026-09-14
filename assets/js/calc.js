@@ -85,13 +85,43 @@ export function portfolioNetContributionsAt(dateISO, opts = {}) {
   return total;
 }
 
+const CAPITAL_GAINS_TAX_RATE = 0.25;
+
+export function usdIlsRate() {
+  return store.settings.fxRateUsdIls || 3.7;
+}
+
+export function valueInILS(inv, value) {
+  if (inv.currency === "USD") return value * usdIlsRate();
+  return value;
+}
+
+export function estimatedTax(investmentId, dateISO = todayISO()) {
+  const inv = store.getInvestment(investmentId);
+  if (!inv || inv.taxType !== "taxable") return 0;
+  const gain = investmentGain(investmentId, dateISO);
+  return Math.max(0, gain) * CAPITAL_GAINS_TAX_RATE;
+}
+
+export function portfolioEstimatedTax(dateISO = todayISO(), opts = {}) {
+  const invs = includedInvestments(opts);
+  let total = 0;
+  invs.forEach((inv) => {
+    if (inv.archived && inv.archivedAt && inv.archivedAt.slice(0, 10) < dateISO) return;
+    total += estimatedTax(inv.id, dateISO);
+  });
+  return total;
+}
+
 export function currentPortfolioStats() {
   const today = todayISO();
   const value = portfolioValueAt(today);
   const contrib = portfolioNetContributionsAt(today);
   const gain = value - contrib;
   const returnPct = Math.abs(contrib) < 1 ? null : (gain / contrib) * 100;
-  return { value, contrib, gain, returnPct };
+  const tax = portfolioEstimatedTax(today);
+  const netValue = value - tax;
+  return { value, contrib, gain, returnPct, tax, netValue };
 }
 
 function allDatesForInvestments(invIds) {
@@ -234,6 +264,38 @@ export function taxSplit() {
     if (inv.taxType === "taxable") taxable += value; else exempt += value;
   });
   return { taxable, exempt, total: taxable + exempt };
+}
+
+export function hasMarketSectorData() {
+  return store.activeInvestments().some((i) => i.market || i.sector);
+}
+
+export function breakdownByField(field) {
+  const invs = store.activeInvestments();
+  const today = todayISO();
+  const map = new Map();
+  invs.forEach((inv) => {
+    const raw = valueOfInvestmentAt(inv.id, today);
+    if (!raw) return;
+    let key;
+    if (field === "market") key = inv.market || "";
+    else if (field === "sector") key = inv.sector || "";
+    else if (field === "currency") key = inv.currency;
+    if (field !== "currency" && !key) return;
+    const valueILS = valueInILS(inv, raw);
+    const prev = map.get(key) || { name: key, value: 0, color: inv.color };
+    prev.value += valueILS;
+    map.set(key, prev);
+  });
+  return Array.from(map.values()).sort((a, b) => b.value - a.value);
+}
+
+export function fxGainLossByInvestment() {
+  const rate = usdIlsRate();
+  return store.activeInvestments()
+    .filter((inv) => inv.currency === "USD" && inv.purchaseRate)
+    .map((inv) => ({ name: inv.name, value: currentValue(inv.id) * (rate - inv.purchaseRate) }))
+    .filter((x) => Math.abs(x.value) > 0.5);
 }
 
 export function typeLabel(type) {

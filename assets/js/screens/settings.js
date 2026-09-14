@@ -32,12 +32,19 @@ export function renderSettings(container) {
 
       <div class="card">
         <h3>סנכרון Google Sheets</h3>
-        <p class="text-muted">כתובת Web App של Apps Script - הנתונים יישלחו אליה בכל עדכון.</p>
+        <p class="text-muted">כתובת Web App של Apps Script. לאחר שמירת הכתובת, כל פעולה (הפקדה, משיכה, עדכון שווי, הוספת/עריכת השקעה) תסונכרן אוטומטית לגיליון המחובר - בדיוק כמו באתר הקודם.</p>
         <div class="field"><input type="url" id="sheets-url" placeholder="https://script.google.com/macros/s/.../exec" value="${store.settings.sheetsUrl || ""}"></div>
         <div class="settings-actions">
           <button class="btn btn-outline btn-small" id="save-sheets-url">שמור כתובת</button>
           <button class="btn btn-outline btn-small" id="sync-now">סנכרן עכשיו</button>
         </div>
+      </div>
+
+      <div class="card">
+        <h3>שער דולר-שקל</h3>
+        <p class="text-muted">משמש להמרת השקעות דולריות לשקלים בפילוחים (שוק/תחום/מטבע) ובגרף רווח/הפסד משער חליפין.</p>
+        <div class="field"><input type="number" step="0.001" id="fx-rate" value="${store.settings.fxRateUsdIls || 3.7}"></div>
+        <button class="btn btn-outline btn-small" id="save-fx-rate">שמור שער</button>
       </div>
 
       ${legacy ? `
@@ -78,6 +85,11 @@ export function renderSettings(container) {
   container.querySelector("#sync-now").addEventListener("click", () => {
     if (!store.settings.sheetsUrl) { showToast("קודם יש להזין ולשמור כתובת Web App"); return; }
     syncToSheets();
+  });
+
+  container.querySelector("#save-fx-rate").addEventListener("click", () => {
+    store.setFxRateUsdIls(container.querySelector("#fx-rate").value);
+    showToast("השער נשמר");
   });
 
   container.querySelector("#download-legacy")?.addEventListener("click", downloadLegacyBackup);

@@ -1,6 +1,6 @@
 import { store } from "./store.js";
 import { showToast } from "./ui.js";
-import { typeLabel, currentValue, currentNetContributions, investmentGain, investmentReturnPct } from "./calc.js";
+import { typeLabel, currentValue, currentNetContributions, investmentGain, investmentReturnPct, netContributionsAt, estimatedTax } from "./calc.js";
 
 export function exportJSON() {
   const payload = { exportedAt: new Date().toISOString(), data: store.data };
@@ -9,14 +9,17 @@ export function exportJSON() {
 }
 
 export function exportCSV() {
-  const rows = [["השקעה", "סוג", "מוסד", "מטבע", "תאריך", "שווי", "הפקדות_נטו", "רווח", "תשואה_אחוז"]];
+  const rows = [["השקעה", "סוג", "מוסד", "מטבע", "תאריך", "שווי", "הפקדות_נטו", "רווח", "מס_משוער", "נטו_אחרי_מס", "תשואה_אחוז"]];
   store.data.investments.forEach((inv) => {
     const snaps = store.snapshotsFor(inv.id);
     snaps.forEach((s) => {
-      const contrib = currentNetContributions(inv.id);
-      rows.push([inv.name, typeLabel(inv.type), inv.institution || "", inv.currency, s.date, Math.round(s.value), "", "", ""]);
+      const contrib = netContributionsAt(inv.id, s.date);
+      const gain = s.value - contrib;
+      const tax = estimatedTax(inv.id, s.date);
+      const net = s.value - tax;
+      const roi = Math.abs(contrib) < 1 ? "" : ((gain / contrib) * 100).toFixed(1) + "%";
+      rows.push([inv.name, typeLabel(inv.type), inv.institution || "", inv.currency, s.date, Math.round(s.value), Math.round(contrib), Math.round(gain), Math.round(tax), Math.round(net), roi]);
     });
-    if (!snaps.length) return;
   });
   const csv = "﻿" + rows.map((r) => r.map(csvEscape).join(",")).join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -64,10 +67,13 @@ export function buildSheetsRows() {
     const value = currentValue(inv.id);
     const contrib = currentNetContributions(inv.id);
     const gain = investmentGain(inv.id);
+    const tax = estimatedTax(inv.id);
+    const net = value - tax;
     const ret = investmentReturnPct(inv.id);
     rows.push([
       inv.name, typeLabel(inv.type), inv.institution || "", inv.currency,
-      Math.round(value), Math.round(contrib), Math.round(gain), ret != null ? ret.toFixed(1) + "%" : "",
+      Math.round(value), Math.round(contrib), Math.round(gain), Math.round(tax), Math.round(net),
+      ret != null ? ret.toFixed(1) + "%" : "",
     ]);
   });
   return rows;
