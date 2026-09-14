@@ -9,6 +9,7 @@ function staticCommands() {
   return [
     { label: "עבור לסקירה כללית", icon: "layout-dashboard", action: () => navigate("/overview") },
     { label: "עבור להשקעות", icon: "wallet", action: () => navigate("/investments") },
+    { label: "עבור לעדכון חודשי", icon: "pencil", action: () => navigate("/monthly-update") },
     { label: "עבור לפעילות", icon: "activity", action: () => navigate("/activity") },
     { label: "עבור לניתוח", icon: "chart-column", action: () => navigate("/analysis") },
     { label: "עבור ליעדים", icon: "target", action: () => navigate("/goals") },
@@ -16,7 +17,6 @@ function staticCommands() {
     { label: "הוסף השקעה חדשה", icon: "plus", action: () => workflows.openAddInvestmentFlow() },
     { label: "הוסף הפקדה", icon: "arrow-down-right", action: () => workflows.quickDeposit() },
     { label: "משוך כסף", icon: "arrow-up-right", action: () => workflows.quickWithdraw() },
-    { label: "פתח מרכז עדכון חודשי", icon: "pencil", action: () => workflows.openMonthlyUpdateCenter() },
   ];
 }
 

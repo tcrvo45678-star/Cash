@@ -15,6 +15,12 @@ function guessType(name) {
   return "other";
 }
 
+function guessTrackReturns(name) {
+  const n = name || "";
+  if (/עובר ושב|מזומן/.test(n)) return false;
+  return true;
+}
+
 export function readLegacyRaw() {
   let legacy = null;
   let sheetsUrl = "";
@@ -107,6 +113,7 @@ export function convertLegacyToNewData(legacy) {
       liquidity: ch.liquid ? "liquid" : "illiquid",
       category: ch.classification === "maintenance" ? "בתחזוקה" : ch.classification === "inactive" ? "לא פעיל (יובא)" : "",
       exposure: "",
+      trackReturns: guessTrackReturns(ch.name),
       icon: null,
       color: null,
       notes: ch.description || "",

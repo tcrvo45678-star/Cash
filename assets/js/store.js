@@ -23,6 +23,14 @@ export const DEFAULT_LIQUIDITY_BY_TYPE = {
   other: "liquid",
 };
 
+export const CASH_SOURCE_OPTIONS = [
+  { id: "deposit", label: "הפקדה" },
+  { id: "salary", label: "משכורת" },
+  { id: "gift", label: "מתנה" },
+  { id: "expense", label: "הוצאה / משיכה" },
+  { id: "other", label: "אחר" },
+];
+
 export const CHART_PALETTE = [
   "#245E48", "#B69560", "#5C7A94", "#8C4A38", "#4F8C82",
   "#9B6B5C", "#7A8FA6", "#A0895A", "#6B8F71", "#B0567A",
@@ -138,6 +146,7 @@ class Store {
       color: fields.color || CHART_PALETTE[this.data.investments.length % CHART_PALETTE.length],
       notes: fields.notes || "",
       excludeFromTotals: !!fields.excludeFromTotals,
+      trackReturns: fields.trackReturns != null ? !!fields.trackReturns : true,
       archived: false,
       archivedAt: null,
       createdAt: nowISO(),
@@ -244,6 +253,7 @@ class Store {
       amount: Math.abs(Number(fields.amount) || 0),
       currency: fields.currency || (inv ? inv.currency : "ILS"),
       note: fields.note || "",
+      source: fields.source || null,
       linkedTransactionId: fields.linkedTransactionId || null,
       createdAt: nowISO(),
     };

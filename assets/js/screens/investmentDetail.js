@@ -2,7 +2,7 @@ import { store } from "./../store.js";
 import { icon, TYPE_ICON } from "./../icons.js";
 import { fmtMoney, fmtPct, fmtDate, escapeHtml, freshnessLabel } from "./../utils.js";
 import {
-  investmentStats, investmentHistory, monthlySeriesForInvestment, typeLabel,
+  investmentStats, investmentHistory, monthlySeriesForInvestment, typeLabel, isTrackingReturns,
 } from "./../calc.js";
 import { createValueVsContributionsChart, createBarChart } from "./../charts.js";
 import { navigate } from "./../router.js";
@@ -44,8 +44,10 @@ export function renderInvestmentDetail(container, { id }) {
       <div class="detail-value-row">
         <div class="detail-value">${fmtMoney(stats.value, inv.currency)}</div>
         <div class="detail-metrics">
+          ${isTrackingReturns(inv) ? `
           <span class="${stats.gain >= 0 ? "text-positive" : "text-negative"}">${fmtMoney(stats.gain, inv.currency, { forceSign: true })}</span>
           <span class="${(stats.returnPct ?? 0) >= 0 ? "text-positive" : "text-negative"}">${stats.returnPct != null ? fmtPct(stats.returnPct) : "—"}</span>
+          ` : `<span class="badge badge-muted">מזומן - ללא מעקב תשואה</span>`}
           <span class="text-muted small">${freshnessLabel(stats.lastUpdate)}</span>
         </div>
       </div>
@@ -112,13 +114,15 @@ function renderOverviewTab(body, inv) {
       ${hist.length >= 2 ? `<div class="chart-wrap chart-wrap-lg"><canvas id="detail-main-chart"></canvas></div>` : chartEmptyState()}
     </div>
     <div class="card">
-      <h3>סיכום ביצועים</h3>
+      <h3>${isTrackingReturns(inv) ? "סיכום ביצועים" : "סיכום תזרים"}</h3>
       <div class="perf-summary">
-        <div class="perf-row"><span>השקעה ראשונית</span><strong>${firstSnap ? fmtMoney(firstSnap.value, inv.currency) : "—"}</strong></div>
-        <div class="perf-row"><span>הפקדה נטו (כולל)</span><strong>${fmtMoney(stats.contrib, inv.currency)}</strong></div>
+        <div class="perf-row"><span>${isTrackingReturns(inv) ? "השקעה ראשונית" : "יתרת פתיחה"}</span><strong>${firstSnap ? fmtMoney(firstSnap.value, inv.currency) : "—"}</strong></div>
+        <div class="perf-row"><span>${isTrackingReturns(inv) ? "הפקדה נטו (כולל)" : "תזרים נטו (כולל)"}</span><strong>${fmtMoney(stats.contrib, inv.currency)}</strong></div>
         <div class="perf-row"><span>שווי נוכחי</span><strong>${fmtMoney(stats.value, inv.currency)}</strong></div>
+        ${isTrackingReturns(inv) ? `
         <div class="perf-row perf-row-highlight"><span>רווח</span><strong class="${stats.gain >= 0 ? "text-positive" : "text-negative"}">${fmtMoney(stats.gain, inv.currency, { forceSign: true })}</strong></div>
         <div class="perf-row perf-row-highlight"><span>תשואה <span class="info-tip" title="התשואה מחושבת ביחס להפקדות נטו, בנפרד מהפקדות ומשיכות.">${icon("info", { size: 12 })}</span></span><strong class="${(stats.returnPct ?? 0) >= 0 ? "text-positive" : "text-negative"}">${stats.returnPct != null ? fmtPct(stats.returnPct) : "—"}</strong></div>
+        ` : `<p class="text-muted small">חשבון מזומן - שינויי יתרה מסווגים כתזרים (משכורת/הפקדה/מתנה/הוצאה) ולא כרווח השקעה.</p>`}
       </div>
     </div>
   `;
@@ -146,7 +150,9 @@ function renderPerformanceTab(body, inv) {
     return;
   }
   const labels = series.map((s) => monthShortLabel(s.month));
+  const tracking = isTrackingReturns(inv);
   body.innerHTML = `
+    ${tracking ? `
     <div class="card chart-card">
       <div class="card-head">
         <h3>רווח / הפסד לאורך זמן</h3>
@@ -161,15 +167,27 @@ function renderPerformanceTab(body, inv) {
       <h3>תשואה חודשית</h3>
       <div class="chart-wrap"><canvas id="return-chart"></canvas></div>
     </div>
+    ` : `<div class="card"><p class="text-muted">חשבון מזומן - להלן שינויי היתרה והתזרים החודשי בלבד, ללא חישובי תשואה.</p></div>`}
     <div class="card chart-card">
       <h3>שינוי בשווי לפי חודש</h3>
       <div class="chart-wrap"><canvas id="change-chart"></canvas></div>
     </div>
     <div class="card chart-card">
-      <h3>הפקדות לאורך זמן</h3>
+      <h3>${tracking ? "הפקדות לאורך זמן" : "תזרים מזומן חודשי (משכורת/הפקדה/מתנה/הוצאה)"}</h3>
       <div class="chart-wrap"><canvas id="deposits-chart"></canvas></div>
     </div>
   `;
+
+  if (!tracking) {
+    createBarChart(body.querySelector("#change-chart"), {
+      labels, values: series.map((s) => s.change), currency: inv.currency,
+    });
+    createBarChart(body.querySelector("#deposits-chart"), {
+      labels, values: series.map((s) => s.depositsInMonth), currency: inv.currency,
+      positiveColor: "#5C7A94", negativeColor: "#B94A4A",
+    });
+    return;
+  }
 
   const gainLabels = hist.map((h) => fmtDate(h.date, { style: "short" }));
   const drawGain = () => {

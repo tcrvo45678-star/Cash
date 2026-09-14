@@ -385,6 +385,8 @@ table.inv-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .toggle-pair { display: inline-flex; border-radius: 9px; overflow: hidden; border: 1.5px solid var(--border); }
 .toggle-pair button { padding: 7px 16px; border: none; background: var(--surface); color: var(--text-muted); cursor: pointer; font-size: 13px; font-weight: 600; }
 .toggle-pair button.on { background: var(--brand-primary); color: #fff; }
+.toggle-pair-wide { display: flex; width: 100%; }
+.toggle-pair-wide button { flex: 1; padding: 10px 8px; font-size: 12.5px; line-height: 1.3; }
 .toggle-field { display: flex; align-items: center; justify-content: space-between; flex-direction: row; }
 .toggle-field label { margin: 0; }
 
@@ -405,6 +407,30 @@ table.inv-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .mu-input { width: 100%; padding: 7px 9px; border-radius: 7px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text-primary); }
 .monthly-update-preview { background: var(--surface-2); border-radius: 10px; padding: 12px 14px; }
 .mu-preview-row { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; }
+
+/* ===================== Monthly update screen ===================== */
+.monthly-intro { margin-bottom: 14px; font-size: 13px; }
+.monthly-card { padding: 0; overflow: hidden; }
+.monthly-table { max-height: none; padding: 8px 20px 0; }
+.monthly-group { margin-bottom: 6px; }
+.monthly-group-label { font-size: 12px; font-weight: 700; color: var(--text-muted); padding: 14px 4px 8px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+.mu-row2 { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 4px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.mu-row2:last-child { border-bottom: none; }
+.mu-row2-info { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1 1 200px; }
+.mu-row2-icon { width: 30px; height: 30px; border-radius: 8px; background: var(--surface-2); display: flex; align-items: center; justify-content: center; color: var(--brand-primary); flex-shrink: 0; }
+.mu-row2-text { min-width: 0; }
+.mu-row2-name { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mu-row2-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.mu-stale-badge { background: var(--negative-bg); color: var(--negative); padding: 1px 8px; border-radius: 10px; font-weight: 700; font-size: 10.5px; }
+.mu-row2-input { display: flex; gap: 6px; flex: 0 0 auto; }
+.mu-row2-input .mu-input { width: 130px; padding: 9px 10px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text-primary); font-size: 14px; }
+.mu-row2-input .mu-input:focus { border-color: var(--brand-secondary); outline: none; }
+.mu-source { width: 118px; padding: 9px 6px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text-primary); font-size: 12.5px; }
+.monthly-preview { padding: 16px 20px; background: var(--surface-2); margin-top: 8px; }
+.mu-preview-row { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; }
+.mu-preview-highlight { font-size: 14.5px; font-weight: 700; padding-top: 6px; }
+.mu-preview-split { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); font-size: 12.5px; color: var(--text-muted); }
+.monthly-save-bar { padding: 16px 20px 20px; }
 
 /* ===================== Overlays: modal / drawer / sheet / toast ===================== */
 body.overlay-open { overflow: hidden; }
@@ -508,6 +534,11 @@ body.overlay-open { overflow: hidden; }
   .palette-backdrop { padding-top: 6vh; align-items: flex-start; }
   .mu-row { grid-template-columns: 1fr 0.8fr 0.9fr; }
   .market-sector-grid { grid-template-columns: 1fr; }
+  .mu-row2-input { flex: 1 1 100%; }
+  .mu-row2-input .mu-input { flex: 1; width: auto; }
+  .mu-source { flex: 1; width: auto; }
+  .monthly-table { padding: 8px 14px 0; }
+  .monthly-preview, .monthly-save-bar { padding-left: 14px; padding-right: 14px; }
 }
 
 @media (max-width: 480px) {

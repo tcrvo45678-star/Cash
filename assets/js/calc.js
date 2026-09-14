@@ -50,6 +50,10 @@ export function investmentReturnPct(investmentId, dateISO = todayISO()) {
   return (gain / contrib) * 100;
 }
 
+export function isTrackingReturns(inv) {
+  return inv ? inv.trackReturns !== false : true;
+}
+
 export function investmentStats(investmentId) {
   const value = currentValue(investmentId);
   const contrib = currentNetContributions(investmentId);

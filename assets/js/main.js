@@ -10,6 +10,7 @@ import { debounce } from "./utils.js";
 import { renderDashboard } from "./screens/dashboard.js";
 import { renderInvestments } from "./screens/investments.js";
 import { renderInvestmentDetail } from "./screens/investmentDetail.js";
+import { renderMonthlyUpdate } from "./screens/monthlyUpdate.js";
 import { renderActivity } from "./screens/activity.js";
 import { renderAnalysis } from "./screens/analysis.js";
 import { renderGoals } from "./screens/goals.js";
@@ -18,11 +19,13 @@ import { renderSettings } from "./screens/settings.js";
 const NAV_ITEMS = [
   { path: "/overview", label: "סקירה", icon: "layout-dashboard" },
   { path: "/investments", label: "השקעות", icon: "wallet" },
-  { path: "/activity", label: "פעילות", icon: "activity" },
+  { path: "/monthly-update", label: "עדכון חודשי", icon: "pencil" },
   { path: "/analysis", label: "ניתוח", icon: "chart-column" },
+  { path: "/activity", label: "פעילות", icon: "activity" },
   { path: "/goals", label: "יעדים", icon: "target" },
   { path: "/settings", label: "הגדרות", icon: "settings" },
 ];
+const BOTTOM_NAV_PATHS = ["/overview", "/investments", "/monthly-update", "/analysis", "/activity"];
 
 function renderShell() {
   document.getElementById("app").innerHTML = `
@@ -43,7 +46,7 @@ function renderShell() {
     </header>
     <main id="screen-root"></main>
     <nav class="bottom-nav" id="bottom-nav">
-      ${NAV_ITEMS.slice(0, 5).map((n) => `<a href="#${n.path}" class="bottom-nav-item" data-path="${n.path}">${icon(n.icon, { size: 20 })}<span>${n.label}</span></a>`).join("")}
+      ${NAV_ITEMS.filter((n) => BOTTOM_NAV_PATHS.includes(n.path)).map((n) => `<a href="#${n.path}" class="bottom-nav-item" data-path="${n.path}">${icon(n.icon, { size: 20 })}<span>${n.label}</span></a>`).join("")}
     </nav>
     <button class="fab" id="fab-new-btn" aria-label="חדש">${icon("plus", { size: 24 })}</button>
     <div id="overlay-root"></div>
@@ -73,6 +76,7 @@ function setupRoutes() {
   registerRoute("/overview", () => mountScreen(renderDashboard));
   registerRoute("/investments", () => mountScreen(renderInvestments));
   registerRoute("/investments/:id", (params) => mountScreen(renderInvestmentDetail, params));
+  registerRoute("/monthly-update", () => mountScreen(renderMonthlyUpdate));
   registerRoute("/activity", () => mountScreen(renderActivity));
   registerRoute("/analysis", () => mountScreen(renderAnalysis));
   registerRoute("/goals", () => mountScreen(renderGoals));
@@ -97,6 +101,7 @@ function subscribeReRender() {
     if (base === "investments" && idPart) renderInvestmentDetail(root, { id: idPart });
     else if (base === "investments") renderInvestments(root);
     else if (base === "overview" || !base) renderDashboard(root);
+    else if (base === "monthly-update") renderMonthlyUpdate(root);
     else if (base === "activity") renderActivity(root);
     else if (base === "analysis") renderAnalysis(root);
     else if (base === "goals") renderGoals(root);

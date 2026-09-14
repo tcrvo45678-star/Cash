@@ -1,8 +1,8 @@
-import { store, INVESTMENT_TYPES, CHART_PALETTE } from "./store.js";
+import { store, INVESTMENT_TYPES, CHART_PALETTE, CASH_SOURCE_OPTIONS } from "./store.js";
 import { icon, TYPE_ICON } from "./icons.js";
 import { openModal, openDrawer, showToast, openActionSheet, confirmDialog, closeAllOverlays } from "./ui.js";
 import { uid, todayISO, fmtMoney, fmtDate, parseNumberInput, el } from "./utils.js";
-import { currentValue, currentNetContributions, typeLabel } from "./calc.js";
+import { currentValue, currentNetContributions, typeLabel, isTrackingReturns } from "./calc.js";
 import { navigate } from "./router.js";
 
 function recentInvestmentIds() {
@@ -104,7 +104,7 @@ const TYPE_FIELDS = {
   stock_etf: ["ticker", "institution", "currency"],
   pension_fund: ["institution", "track"],
   study_fund: ["institution", "track"],
-  cash_deposit: ["institution", "currency"],
+  cash_deposit: ["moneyKind", "institution", "currency"],
   crypto: ["ticker", "currency"],
   real_estate: [],
   other: [],
@@ -117,6 +117,14 @@ function fieldHtml(key) {
     case "track": return `<div class="field"><label>מסלול</label><input type="text" name="track" placeholder="לדוגמה: מניות, כללי..."></div>`;
     case "currency": return `<div class="field"><label>מטבע</label>
       <select name="currency"><option value="ILS">שקל (₪)</option><option value="USD">דולר ($)</option><option value="EUR">יורו (€)</option></select></div>`;
+    case "moneyKind": return `<div class="field">
+        <label>איזה סוג חשבון זה?</label>
+        <div class="toggle-pair toggle-pair-wide" data-toggle="moneyKind">
+          <button type="button" data-val="cash" class="on">עו״ש / מזומן שוטף</button>
+          <button type="button" data-val="investment">פיקדון / חיסכון עם ריבית</button>
+        </div>
+        <p class="field-hint" style="margin-top:6px;">בעו״ש שינויי יתרה לא ייחשבו "תשואה" - נשאל אותך את המקור שלהם (משכורת, הפקדה, מתנה...) בכל עדכון.</p>
+      </div>`;
     default: return "";
   }
 }
@@ -135,6 +143,8 @@ function openAddInvestmentDetailsForm(type) {
     <p class="field-hint">אפשר להשלים פרטים נוספים (מוסד, דמי ניהול, הערות) מאוחר יותר דרך "ערוך השקעה".</p>
   </form>`);
 
+  wireToggle(body, "moneyKind");
+
   const { close, el: modalEl } = openModal({
     title: `${typeMeta.label} חדשה`,
     size: "md",
@@ -149,6 +159,11 @@ function openAddInvestmentDetailsForm(type) {
     const initialValue = fd.get("initialValue");
     if (!name) { showToast("צריך להזין שם להשקעה"); return; }
     if (initialValue === "" || initialValue == null) { showToast("צריך להזין שווי נוכחי"); return; }
+    const moneyKindBtn = body.querySelector('[data-toggle="moneyKind"] .on');
+    const trackReturns = moneyKindBtn ? moneyKindBtn.dataset.val !== "cash" : true;
+    const initialContribution = fd.get("initialContribution")
+      ? parseNumberInput(fd.get("initialContribution"))
+      : (!trackReturns ? parseNumberInput(initialValue) : null);
     const inv = store.createInvestment({
       name, type,
       institution: fd.get("institution") || "",
@@ -156,7 +171,8 @@ function openAddInvestmentDetailsForm(type) {
       ticker: fd.get("ticker") || "",
       currency: fd.get("currency") || "ILS",
       initialValue: parseNumberInput(initialValue),
-      initialContribution: fd.get("initialContribution") ? parseNumberInput(fd.get("initialContribution")) : null,
+      initialContribution,
+      trackReturns,
       date: fd.get("date") || todayISO(),
     });
     close();
@@ -195,11 +211,13 @@ export function openMoneyMoveDialog(investmentId, type) {
   const inv = store.getInvestment(investmentId);
   if (!inv) return;
   const isDeposit = type === "deposit";
+  const cash = !isTrackingReturns(inv);
   const value = currentValue(investmentId);
   const body = el(`<form class="stack-form">
     <p class="dialog-sub">${isDeposit ? "הוספה ל" : "משיכה מ"}${inv.name}</p>
     <div class="field"><label>סכום (${inv.currency})</label><input type="number" inputmode="decimal" name="amount" required placeholder="0" autofocus></div>
     <div class="field"><label>תאריך</label><input type="date" name="date" value="${todayISO()}"></div>
+    ${cash ? `<div class="field"><label>מקור</label><select name="source">${CASH_SOURCE_OPTIONS.map((s) => `<option value="${s.id}" ${isDeposit ? "" : (s.id === "expense" ? "selected" : "")}>${s.label}</option>`).join("")}</select></div>` : ""}
     <div class="field toggle-field">
       <label>${isDeposit ? "השווי גדל בסכום ההפקדה?" : "השווי קטן בסכום המשיכה?"}</label>
       <div class="toggle-pair" data-toggle="applyToValue">
@@ -232,7 +250,8 @@ export function openMoneyMoveDialog(investmentId, type) {
     if (!isDeposit && amount > value * 1.001 && value > 0) {
       showToast(`שים לב: הסכום גבוה מהשווי הנוכחי (${fmtMoney(value, inv.currency)})`, { duration: 4000 });
     }
-    const tx = store.addTransaction(investmentId, { type: isDeposit ? "deposit" : "withdrawal", date, amount, note, newValue });
+    const source = cash ? (fd.get("source") || "deposit") : null;
+    const tx = store.addTransaction(investmentId, { type: isDeposit ? "deposit" : "withdrawal", date, amount, note, newValue, source });
     touchRecent(investmentId);
     close();
     const label = isDeposit ? "הפקדה" : "משיכה";
@@ -258,12 +277,14 @@ function wireToggle(container, name) {
 export function openQuickUpdateValueDialog(investmentId) {
   const inv = store.getInvestment(investmentId);
   if (!inv) return;
+  const cash = !isTrackingReturns(inv);
   const prevValue = currentValue(investmentId);
   const body = el(`<form class="stack-form">
     <p class="dialog-sub">עדכון שווי — ${inv.name}</p>
     <div class="field"><label>שווי קודם</label><input type="text" value="${fmtMoney(prevValue, inv.currency)}" disabled></div>
     <div class="field"><label>שווי חדש</label><input type="number" inputmode="decimal" name="newValue" required placeholder="0" value="${prevValue || ""}" autofocus></div>
     <div class="field"><label>תאריך</label><input type="date" name="date" value="${todayISO()}"></div>
+    ${cash ? `<div class="field"><label>מקור השינוי</label><select name="source">${CASH_SOURCE_OPTIONS.map((s) => `<option value="${s.id}">${s.label}</option>`).join("")}</select></div>` : ""}
     <p class="field-hint change-preview"></p>
   </form>`);
 
@@ -287,7 +308,18 @@ export function openQuickUpdateValueDialog(investmentId) {
     const fd = new FormData(body);
     const newValue = parseNumberInput(fd.get("newValue"));
     const date = fd.get("date") || todayISO();
-    store.addSnapshot(investmentId, date, newValue);
+    store.addSnapshot(investmentId, date, newValue, { silent: true });
+    if (cash) {
+      const delta = newValue - prevValue;
+      const source = fd.get("source") || "deposit";
+      const sourceLabel = CASH_SOURCE_OPTIONS.find((s) => s.id === source)?.label || "הפקדה";
+      if (delta > 0.01) {
+        store.addTransaction(investmentId, { type: "deposit", date, amount: delta, source, note: sourceLabel }, { silent: true });
+      } else if (delta < -0.01) {
+        store.addTransaction(investmentId, { type: "withdrawal", date, amount: Math.abs(delta), source, note: sourceLabel }, { silent: true });
+      }
+    }
+    store.saveAndEmit();
     touchRecent(investmentId);
     close();
     showToast("השווי עודכן");
@@ -343,6 +375,14 @@ export function openEditInvestmentDrawer(investmentId) {
     </section>
     <section class="form-section">
       <h4>סיווג ומיסוי</h4>
+      <div class="field">
+        <label>מעקב תשואה</label>
+        <div class="toggle-pair toggle-pair-wide" data-toggle="trackReturns">
+          <button type="button" data-val="yes" class="${isTrackingReturns(inv) ? "on" : ""}">השקעה - עוקב אחרי רווח/תשואה</button>
+          <button type="button" data-val="no" class="${!isTrackingReturns(inv) ? "on" : ""}">מזומן / עו״ש - לא (רק תזרים)</button>
+        </div>
+        <p class="field-hint" style="margin-top:6px;">בחשבון מזומן, שינויי יתרה יסווגו לפי מקור (משכורת/הפקדה/מתנה) ולא כרווח.</p>
+      </div>
       <div class="field-row">
         <div class="field"><label>מיסוי</label><select name="taxType"><option value="taxable" ${inv.taxType === "taxable" ? "selected" : ""}>חייב במס</option><option value="exempt" ${inv.taxType === "exempt" ? "selected" : ""}>פטור ממס</option></select></div>
         <div class="field"><label>נזילות</label><select name="liquidity"><option value="liquid" ${inv.liquidity === "liquid" ? "selected" : ""}>נזיל</option><option value="illiquid" ${inv.liquidity === "illiquid" ? "selected" : ""}>לא נזיל</option></select></div>
@@ -390,6 +430,7 @@ export function openEditInvestmentDrawer(investmentId) {
       selectedColor = sw.dataset.color;
     });
   });
+  wireToggle(body, "trackReturns");
 
   const { close, el: drawerEl } = openDrawer({
     title: "עריכת השקעה",
@@ -399,6 +440,7 @@ export function openEditInvestmentDrawer(investmentId) {
   drawerEl.querySelector('[data-act="cancel"]').onclick = () => close();
   drawerEl.querySelector('[data-act="save"]').onclick = () => {
     const fd = new FormData(body);
+    const trackReturns = body.querySelector('[data-toggle="trackReturns"] .on')?.dataset.val !== "no";
     store.updateInvestment(investmentId, {
       name: (fd.get("name") || inv.name).trim() || inv.name,
       type: fd.get("type"),
@@ -408,6 +450,7 @@ export function openEditInvestmentDrawer(investmentId) {
       ticker: fd.get("ticker") || "",
       taxType: fd.get("taxType"),
       liquidity: fd.get("liquidity"),
+      trackReturns,
       track: fd.get("track") || "",
       feeRate: fd.get("feeRate") ? parseNumberInput(fd.get("feeRate")) : null,
       category: fd.get("category") || "",
@@ -482,79 +525,3 @@ export function openInvestmentQuickActions(investmentId) {
   });
 }
 
-// ---------- Monthly update center ----------
-export function openMonthlyUpdateCenter() {
-  const invs = orderedActiveInvestments().filter((i) => !i.excludeFromTotals);
-  if (!invs.length) { showToast("אין השקעות פעילות לעדכן"); return; }
-
-  const rows = invs.map((inv) => {
-    const prev = currentValue(inv.id);
-    return { inv, prev };
-  });
-
-  const body = el(`<div class="monthly-update">
-    <p class="dialog-sub">עדכן את השווי הנוכחי לכל השקעה. אפשר לדלג על שדה עם Tab / Enter.</p>
-    <div class="monthly-update-table">
-      <div class="mu-row mu-head"><div>השקעה</div><div>שווי קודם</div><div>שווי חדש</div></div>
-      ${rows.map((r, idx) => `
-        <div class="mu-row" data-id="${r.inv.id}">
-          <div class="mu-name">${r.inv.name}</div>
-          <div class="mu-prev">${fmtMoney(r.prev, r.inv.currency)}</div>
-          <div><input type="number" inputmode="decimal" class="mu-input" data-idx="${idx}" placeholder="${fmtMoney(r.prev, r.inv.currency)}"></div>
-        </div>`).join("")}
-    </div>
-    <div class="monthly-update-preview"></div>
-  </div>`);
-
-  const inputs = Array.from(body.querySelectorAll(".mu-input"));
-  const preview = body.querySelector(".monthly-update-preview");
-
-  function updatePreview() {
-    let prevTotal = 0, newTotal = 0, changedCount = 0;
-    rows.forEach((r, idx) => {
-      prevTotal += r.prev;
-      const raw = inputs[idx].value;
-      newTotal += raw !== "" ? parseNumberInput(raw) : r.prev;
-      if (raw !== "") changedCount++;
-    });
-    const change = newTotal - prevTotal;
-    preview.innerHTML = changedCount ? `
-      <div class="mu-preview-row"><span>שווי קודם</span><strong>${fmtMoney(prevTotal)}</strong></div>
-      <div class="mu-preview-row"><span>שווי חדש</span><strong>${fmtMoney(newTotal)}</strong></div>
-      <div class="mu-preview-row"><span>שינוי</span><strong class="${change >= 0 ? "text-positive" : "text-negative"}">${fmtMoney(change, "ILS", { forceSign: true })}</strong></div>
-    ` : "";
-    saveBtn.textContent = changedCount ? `שמור ${changedCount} עדכונים` : "שמור עדכונים";
-    saveBtn.disabled = !changedCount;
-  }
-
-  inputs.forEach((inp, idx) => {
-    inp.addEventListener("input", updatePreview);
-    inp.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        const next = inputs[idx + 1];
-        if (next) next.focus(); else saveBtn.focus();
-      }
-    });
-  });
-
-  const { close, el: modalEl } = openModal({
-    title: "עדכון חודשי", size: "lg", body,
-    footer: `<button class="btn btn-ghost" data-act="cancel">ביטול</button><button class="btn btn-primary" data-act="save" disabled>שמור עדכונים</button>`,
-  });
-  const saveBtn = modalEl.querySelector('[data-act="save"]');
-  modalEl.querySelector('[data-act="cancel"]').onclick = () => close();
-  saveBtn.onclick = () => {
-    const date = todayISO();
-    let count = 0;
-    rows.forEach((r, idx) => {
-      const raw = inputs[idx].value;
-      if (raw !== "") { store.addSnapshot(r.inv.id, date, parseNumberInput(raw), { silent: true }); count++; }
-    });
-    store.saveAndEmit();
-    close();
-    showToast(`${count} עדכונים נשמרו`);
-  };
-  updatePreview();
-  if (inputs[0]) inputs[0].focus();
-}

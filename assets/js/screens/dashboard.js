@@ -32,7 +32,7 @@ export function renderDashboard(container) {
           <button class="qa-btn" data-qa="new_investment">${icon("plus", { size: 16 })}<span>השקעה</span></button>
           <button class="qa-btn" data-qa="deposit">${icon("arrow-down-right", { size: 16 })}<span>הפקדה</span></button>
           <button class="qa-btn" data-qa="withdraw">${icon("arrow-up-right", { size: 16 })}<span>משיכה</span></button>
-          <button class="qa-btn" data-qa="update_value">${icon("pencil", { size: 16 })}<span>עדכון שווי</span></button>
+          <button class="qa-btn" data-qa="update_value">${icon("pencil", { size: 16 })}<span>עדכון חודשי</span></button>
         </div>
       </div>
 
@@ -83,7 +83,7 @@ export function renderDashboard(container) {
       if (qa === "new_investment") workflows.openAddInvestmentFlow();
       if (qa === "deposit") workflows.quickDeposit();
       if (qa === "withdraw") workflows.quickWithdraw();
-      if (qa === "update_value") workflows.openMonthlyUpdateCenter();
+      if (qa === "update_value") navigate("/monthly-update");
     });
   });
 

@@ -1,7 +1,7 @@
 import { store, INVESTMENT_TYPES } from "./../store.js";
 import { icon, TYPE_ICON } from "./../icons.js";
 import { fmtMoney, fmtPct, escapeHtml, freshnessLabel } from "./../utils.js";
-import { investmentStats, typeLabel, allocationBy } from "./../calc.js";
+import { investmentStats, typeLabel, allocationBy, isTrackingReturns } from "./../calc.js";
 import { navigate } from "./../router.js";
 import * as workflows from "./../workflows.js";
 
@@ -96,8 +96,10 @@ function renderList(container) {
             <td><span class="inv-name-cell">${icon(TYPE_ICON[inv.type] || "package", { size: 16 })}${escapeHtml(inv.name)}</span></td>
             <td class="text-muted">${typeLabel(inv.type)}</td>
             <td>${fmtMoney(stats.value, inv.currency)}</td>
+            ${isTrackingReturns(inv) ? `
             <td class="${stats.gain >= 0 ? "text-positive" : "text-negative"}">${fmtMoney(stats.gain, inv.currency, { forceSign: true })}</td>
             <td class="${(stats.returnPct ?? 0) >= 0 ? "text-positive" : "text-negative"}">${stats.returnPct != null ? fmtPct(stats.returnPct) : "—"}</td>
+            ` : `<td class="text-muted" colspan="2">מזומן - ללא מעקב תשואה</td>`}
             <td class="text-muted">${total && !inv.excludeFromTotals ? Math.round((stats.value / total) * 100) + "%" : "—"}</td>
             <td class="text-muted small">${freshnessLabel(stats.lastUpdate)}</td>
             <td><button class="icon-btn row-menu" data-menu="${inv.id}">${icon("ellipsis", { size: 16 })}</button></td>
@@ -146,8 +148,10 @@ function investmentCardHtml(inv, stats, total) {
       </div>
       <div class="inv-card-value">${fmtMoney(stats.value, inv.currency)}</div>
       <div class="inv-card-metrics">
+        ${isTrackingReturns(inv) ? `
         <span class="${stats.gain >= 0 ? "text-positive" : "text-negative"}">${fmtMoney(stats.gain, inv.currency, { forceSign: true })}</span>
         <span class="${(stats.returnPct ?? 0) >= 0 ? "text-positive" : "text-negative"}">${stats.returnPct != null ? fmtPct(stats.returnPct) : "—"}</span>
+        ` : `<span class="badge badge-muted">מזומן</span>`}
       </div>
       ${pctOfPortfolio != null ? `<div class="inv-card-bar"><div class="inv-card-bar-fill" style="width:${pctOfPortfolio}%"></div></div><div class="inv-card-pct text-muted">${pctOfPortfolio}% מהתיק</div>` : ""}
       <div class="inv-card-footer">
