@@ -33,6 +33,7 @@ export function renderSettings(container) {
       <div class="card">
         <h3>סנכרון Google Sheets</h3>
         <p class="text-muted">כתובת Web App של Apps Script. לאחר שמירת הכתובת, כל פעולה (הפקדה, משיכה, עדכון שווי, הוספת/עריכת השקעה) תסונכרן אוטומטית לגיליון המחובר - בדיוק כמו באתר הקודם.</p>
+        <p class="text-muted small">אין לך עדיין סקריפט? תבנית מוכנה + מדריך התקנה נמצאים בתיקיית <code>google-apps-script/</code> בריפו.</p>
         <div class="field"><input type="url" id="sheets-url" placeholder="https://script.google.com/macros/s/.../exec" value="${store.settings.sheetsUrl || ""}"></div>
         <div class="settings-actions">
           <button class="btn btn-outline btn-small" id="save-sheets-url">שמור כתובת</button>
